@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Animated } from 'react-native';
+import { StyleSheet, Text, View, Animated, Image } from 'react-native';
 
 export default function WelcomeScreen({ onFinish }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -46,7 +46,17 @@ export default function WelcomeScreen({ onFinish }) {
           },
         ]}
       >
-        <Text style={styles.emoji}>💰</Text>
+        <Animated.Image 
+          source={require('../../assets/logo.png')} 
+          style={[
+            styles.logo,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Welcome to</Text>
         <Text style={styles.appName}>Budget Buddy</Text>
         <Text style={styles.subtitle}>Take control of your finances</Text>
@@ -65,8 +75,9 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  emoji: {
-    fontSize: 80,
+  logo: {
+    width: 150,
+    height: 150,
     marginBottom: 20,
   },
   title: {

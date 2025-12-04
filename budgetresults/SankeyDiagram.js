@@ -30,7 +30,7 @@ const COLORS = {
   default: '#3498db',
 };
 
-export default function SankeyDiagram({ budgetData }) {
+export default function SankeyDiagram({ budgetData, currency = '$' }) {
   // Compact canvas - 1.4x screen width for comfortable scrolling
   const canvasWidth = SCREEN_WIDTH * 1.4;
 
@@ -82,21 +82,42 @@ export default function SankeyDiagram({ budgetData }) {
     });
   }
 
-  if (remaining > 0) {
+  // Calculate if over budget
+  const totalExpenses = expenseEntries.reduce((sum, [_, value]) => sum + value, 0) + savings;
+  const isOverBudget = totalExpenses > totalIncome;
+  const overBudgetAmount = isOverBudget ? totalExpenses - totalIncome : 0;
+
+  // Handle remaining or over-budget
+  if (isOverBudget) {
     dataItems.push({
-      name: 'Remaining',
+      name: 'Over Budget ⚠️',
+      value: overBudgetAmount,
+      color: '#e74c3c', // Red color for over budget
+      type: 'overbudget'
+    });
+  } else if (remaining > 0) {
+    dataItems.push({
+      name: 'Remaining ✓',
       value: remaining,
       color: COLORS.remaining,
       type: 'remaining'
     });
   }
 
-  // Sort all items by value for the right side
-  dataItems.sort((a, b) => b.value - a.value);
+  // Sort all items by value, but keep Remaining/Over Budget at the bottom
+  const regularItems = dataItems.filter(item => item.type !== 'remaining' && item.type !== 'overbudget');
+  const bottomItem = dataItems.find(item => item.type === 'remaining' || item.type === 'overbudget');
+  
+  regularItems.sort((a, b) => b.value - a.value);
+  
+  // Reconstruct array with remaining/overbudget at bottom
+  const sortedItems = bottomItem ? [...regularItems, bottomItem] : regularItems;
+  dataItems.length = 0;
+  dataItems.push(...sortedItems);
 
   // 2. Layout Calculations - COMPACT VERSION
   const nodeWidth = 16; // Slimmer nodes
-  const minNodeSpacing = 36; // Compact spacing between nodes
+  const minNodeSpacing = 42; // Increased spacing for wrapped text
   const minNodeHeight = 6;
   
   // Calculate heights
@@ -107,11 +128,22 @@ export default function SankeyDiagram({ budgetData }) {
   const minHeightForLabels = Math.max(numLeftNodes, numRightNodes) * minNodeSpacing;
   const canvasHeight = Math.max(280, minHeightForLabels + 60);
   
+  // Calculate dynamic left margin based on longest income source label
+  const maxLabelLength = Math.max(
+    ...incomeSourcesArray.map(item => {
+      const label = item.name || 'Income';
+      const wrapped = wrapText(label, 12);
+      return Math.max(...wrapped.map(line => line.length));
+    })
+  );
+  // Approximate 6 pixels per character + 30px padding for amount
+  const dynamicLeftMargin = Math.max(75, maxLabelLength * 6 + 40);
+  
   // Drawing area - compact positioning
-  const leftX = 75;
+  const leftX = dynamicLeftMargin;
   const middleX = canvasWidth / 2 - nodeWidth / 2;
   const rightX = canvasWidth - 160;
-  const startY = 30;
+  const startY = 50; // Increased from 30 to 50 to make room for Total label and amount
   const drawingHeight = canvasHeight - 60;
 
   // Scale factor
@@ -150,11 +182,23 @@ export default function SankeyDiagram({ budgetData }) {
     label: 'Total'
   };
 
-  // Destination Nodes - Right side
+  // Over Budget Extension Node (if applicable)
+  const overBudgetExtension = isOverBudget ? {
+    x: middleX,
+    y: middleNode.y + middleNode.height,
+    width: nodeWidth,
+    height: Math.max(overBudgetAmount * scale, minNodeHeight),
+    color: '#e74c3c', // Red color for over budget
+    value: overBudgetAmount
+  } : null;
+
+  // Destination Nodes - Right side (exclude overbudget from right side)
   const destNodes = [];
   let currentRightY = startY;
   
   dataItems.forEach(item => {
+    // Skip over budget item as it will be shown as extension in the middle
+    if (item.type === 'overbudget') return;
     const rawHeight = item.value * scale;
     const height = Math.max(minNodeHeight, rawHeight);
     
@@ -202,6 +246,10 @@ export default function SankeyDiagram({ budgetData }) {
   const ribbonsRight = destNodes.map(dest => {
     const flowHeight = Math.max(3, dest.value * scale);
     
+    // Determine if flow comes from middle node or over budget extension
+    const sourceIsOverBudget = isOverBudget && currentMiddleDistY >= middleNode.height;
+    const sourceNode = sourceIsOverBudget ? overBudgetExtension : middleNode;
+    
     const start = {
       x: middleNode.x + middleNode.width,
       y: currentMiddleDistY
@@ -217,7 +265,8 @@ export default function SankeyDiagram({ budgetData }) {
     return {
       d: createRibbonPath(start.x, start.y, end.x, end.y, flowHeight),
       color: dest.color,
-      value: dest.value
+      value: dest.value,
+      fromOverBudget: sourceIsOverBudget
     };
   });
 
@@ -239,7 +288,7 @@ export default function SankeyDiagram({ budgetData }) {
             ))}
             {ribbonsRight.map((ribbon, i) => (
               <LinearGradient key={`grad-right-${i}`} id={`grad-right-${i}`} x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor={middleNode.color} stopOpacity="0.65" />
+                <Stop offset="0" stopColor={ribbon.fromOverBudget ? '#e74c3c' : middleNode.color} stopOpacity="0.65" />
                 <Stop offset="1" stopColor={ribbon.color} stopOpacity="0.75" />
               </LinearGradient>
             ))}
@@ -264,40 +313,49 @@ export default function SankeyDiagram({ budgetData }) {
           ))}
 
           {/* Source Nodes (Left) */}
-          {sourceNodes.map((node, i) => (
-            <G key={`source-${i}`}>
-              <Rect
-                x={node.x}
-                y={node.y}
-                width={node.width}
-                height={node.height}
-                fill={node.color}
-                rx={3}
-              />
-              <SvgText
-                x={node.x - 8}
-                y={node.y + node.height / 2}
-                fill="#fff"
-                fontSize="11"
-                fontWeight="600"
-                textAnchor="end"
-                alignmentBaseline="middle"
-              >
-                {node.label}
-              </SvgText>
-              <SvgText
-                x={node.x - 8}
-                y={node.y + node.height / 2 + 13}
-                fill={node.color}
-                fontSize="10"
-                fontWeight="500"
-                textAnchor="end"
-                alignmentBaseline="middle"
-              >
-                ${node.value.toLocaleString()}
-              </SvgText>
-            </G>
-          ))}
+          {sourceNodes.map((node, i) => {
+            const wrappedLabel = wrapText(node.label, 12);
+            const labelHeight = wrappedLabel.length * 12; // 12px per line
+            const labelStartY = node.y + node.height / 2 - (labelHeight / 2) + 6;
+            
+            return (
+              <G key={`source-${i}`}>
+                <Rect
+                  x={node.x}
+                  y={node.y}
+                  width={node.width}
+                  height={node.height}
+                  fill={node.color}
+                  rx={3}
+                />
+                {wrappedLabel.map((line, lineIndex) => (
+                  <SvgText
+                    key={`label-${i}-${lineIndex}`}
+                    x={node.x - 8}
+                    y={labelStartY + (lineIndex * 12)}
+                    fill="#fff"
+                    fontSize="11"
+                    fontWeight="600"
+                    textAnchor="end"
+                    alignmentBaseline="middle"
+                  >
+                    {line}
+                  </SvgText>
+                ))}
+                <SvgText
+                  x={node.x - 8}
+                  y={node.y + node.height / 2 + (labelHeight / 2) + 8}
+                  fill={node.color}
+                  fontSize="10"
+                  fontWeight="500"
+                  textAnchor="end"
+                  alignmentBaseline="middle"
+                >
+                  {`${currency} ${node.value.toLocaleString()}`}
+                </SvgText>
+              </G>
+            );
+          })}
 
           {/* Middle Node (Total) */}
           <Rect
@@ -310,7 +368,7 @@ export default function SankeyDiagram({ budgetData }) {
           />
           <SvgText
             x={middleNode.x + middleNode.width / 2}
-            y={middleNode.y - 12}
+            y={middleNode.y - 20}
             fill="#fff"
             fontSize="11"
             fontWeight="bold"
@@ -320,48 +378,121 @@ export default function SankeyDiagram({ budgetData }) {
           </SvgText>
           <SvgText
             x={middleNode.x + middleNode.width / 2}
-            y={middleNode.y + middleNode.height + 16}
+            y={middleNode.y - 6}
             fill={middleNode.color}
             fontSize="12"
             fontWeight="bold"
             textAnchor="middle"
           >
-            ${totalIncome.toLocaleString()}
+            {`${currency} ${totalIncome.toLocaleString()}`}
           </SvgText>
 
-          {/* Destination Nodes (Right) */}
-          {destNodes.map((node, i) => (
-            <G key={`dest-${i}`}>
+          {/* Over Budget Extension Bar (if applicable) */}
+          {overBudgetExtension && (
+            <>
               <Rect
-                x={node.x}
-                y={node.y}
-                width={node.width}
-                height={node.height}
-                fill={node.color}
+                x={overBudgetExtension.x}
+                y={overBudgetExtension.y}
+                width={overBudgetExtension.width}
+                height={overBudgetExtension.height}
+                fill={overBudgetExtension.color}
                 rx={3}
+                opacity={1}
+              />
+              {/* Add subtle glow for over budget bar */}
+              <Rect
+                x={overBudgetExtension.x - 2}
+                y={overBudgetExtension.y - 2}
+                width={overBudgetExtension.width + 4}
+                height={overBudgetExtension.height + 4}
+                fill="none"
+                stroke={overBudgetExtension.color}
+                strokeWidth="1.5"
+                rx={4}
+                opacity="0.6"
               />
               <SvgText
-                x={node.x + node.width + 8}
-                y={node.y + node.height / 2}
-                fill="#fff"
+                x={overBudgetExtension.x + overBudgetExtension.width / 2}
+                y={overBudgetExtension.y + overBudgetExtension.height + 16}
+                fill={overBudgetExtension.color}
                 fontSize="11"
-                fontWeight="600"
-                alignmentBaseline="middle"
+                fontWeight="bold"
+                textAnchor="middle"
               >
-                {node.name}
+                Over Budget
               </SvgText>
               <SvgText
-                x={node.x + node.width + 8}
-                y={node.y + node.height / 2 + 13}
-                fill={node.color}
+                x={overBudgetExtension.x + overBudgetExtension.width / 2}
+                y={overBudgetExtension.y + overBudgetExtension.height + 30}
+                fill={overBudgetExtension.color}
                 fontSize="10"
-                fontWeight="500"
-                alignmentBaseline="middle"
+                fontWeight="600"
+                textAnchor="middle"
               >
-                ${node.value.toLocaleString()} ({((node.value / totalIncome) * 100).toFixed(0)}%)
+                {`${currency} ${overBudgetAmount.toLocaleString()}`}
               </SvgText>
-            </G>
-          ))}
+            </>
+          )}
+
+          {/* Destination Nodes (Right) */}
+          {destNodes.map((node, i) => {
+            const isSpecialNode = node.type === 'remaining' || node.type === 'overbudget';
+            const nodeColor = isSpecialNode ? node.color : node.color;
+            const wrappedLabel = wrapText(node.name, 14);
+            const labelHeight = wrappedLabel.length * 12; // 12px per line
+            const labelStartY = node.y + node.height / 2 - (labelHeight / 2) + 6;
+            
+            return (
+              <G key={`dest-${i}`}>
+                <Rect
+                  x={node.x}
+                  y={node.y}
+                  width={node.width}
+                  height={node.height}
+                  fill={nodeColor}
+                  rx={3}
+                  opacity={isSpecialNode ? 1 : 0.9}
+                />
+                {/* Add subtle glow for special nodes */}
+                {isSpecialNode && (
+                  <Rect
+                    x={node.x - 2}
+                    y={node.y - 2}
+                    width={node.width + 4}
+                    height={node.height + 4}
+                    fill="none"
+                    stroke={nodeColor}
+                    strokeWidth="1.5"
+                    rx={4}
+                    opacity="0.6"
+                  />
+                )}
+                {wrappedLabel.map((line, lineIndex) => (
+                  <SvgText
+                    key={`label-${i}-${lineIndex}`}
+                    x={node.x + node.width + 8}
+                    y={labelStartY + (lineIndex * 12)}
+                    fill={isSpecialNode ? nodeColor : "#fff"}
+                    fontSize={isSpecialNode ? "12" : "11"}
+                    fontWeight={isSpecialNode ? "bold" : "600"}
+                    alignmentBaseline="middle"
+                  >
+                    {line}
+                  </SvgText>
+                ))}
+                <SvgText
+                  x={node.x + node.width + 8}
+                  y={node.y + node.height / 2 + (labelHeight / 2) + 8}
+                  fill={node.color}
+                  fontSize="10"
+                  fontWeight="500"
+                  alignmentBaseline="middle"
+                >
+                  {`${currency} ${node.value.toLocaleString()} (${((node.value / totalIncome) * 100).toFixed(0)}%)`}
+                </SvgText>
+              </G>
+            );
+          })}
         </Svg>
       </ScrollView>
     </View>
@@ -381,6 +512,35 @@ function createRibbonPath(x1, y1, x2, y2, thickness) {
     C ${cp2x} ${y2 + thickness}, ${cp1x} ${y1 + thickness}, ${x1} ${y1 + thickness}
     Z
   `;
+}
+
+// Helper to wrap text if it's too long
+function wrapText(text, maxLength = 12) {
+  if (text.length <= maxLength) return [text];
+  
+  // Try to split at spaces
+  const words = text.split(' ');
+  if (words.length === 1) {
+    // Single long word, truncate with ellipsis
+    return [text.substring(0, maxLength - 1) + '...'];
+  }
+  
+  const lines = [];
+  let currentLine = '';
+  
+  words.forEach(word => {
+    if ((currentLine + ' ' + word).trim().length <= maxLength) {
+      currentLine = (currentLine + ' ' + word).trim();
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+  
+  if (currentLine) lines.push(currentLine);
+  
+  // Limit to 2 lines max
+  return lines.slice(0, 2);
 }
 
 function formatLabel(key) {

@@ -17,7 +17,7 @@ import SankeyDiagram from './SankeyDiagram';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function BudgetResultsScreen({ budgetData, plannerType, onBack }) {
+export default function BudgetResultsScreen({ budgetData, plannerType, currency = '$', onBack }) {
   const diagramRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -43,7 +43,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, onBack })
             <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
           </View>
           <Text style={styles.goalProgressText}>
-            ${(current || 0).toLocaleString()} of ${(target || 0).toLocaleString()} ({progress.toFixed(1)}%)
+            {currency}{(current || 0).toLocaleString()} of {currency}{(target || 0).toLocaleString()} ({progress.toFixed(1)}%)
           </Text>
           <Text style={styles.plannerInfoDetail}>
             {isAchievable 
@@ -65,7 +65,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, onBack })
             {duration || 0} days • {travelers || 1} traveler{travelers > 1 ? 's' : ''}
           </Text>
           <Text style={styles.savingsGoalText}>
-            💰 Save ${(monthlySavings || 0).toLocaleString()}/month for {months || 0} months
+            💰 Save {currency}{(monthlySavings || 0).toLocaleString()}/month for {months || 0} months
           </Text>
         </View>
       );
@@ -105,25 +105,25 @@ export default function BudgetResultsScreen({ budgetData, plannerType, onBack })
           <View style={styles.statBox}>
             <Text style={styles.statEmoji}>💵</Text>
             <Text style={styles.statLabel}>Income</Text>
-            <Text style={styles.statValue}>${income.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency}{income.toLocaleString()}</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statEmoji}>📤</Text>
             <Text style={styles.statLabel}>Expenses</Text>
-            <Text style={styles.statValue}>${totalExpenses.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency}{totalExpenses.toLocaleString()}</Text>
             <Text style={styles.statPercent}>{expenseRate}%</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statEmoji}>🏦</Text>
             <Text style={styles.statLabel}>Savings</Text>
-            <Text style={styles.statValue}>${savings.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency}{savings.toLocaleString()}</Text>
             <Text style={styles.statPercent}>{savingsRate}%</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statEmoji}>💰</Text>
             <Text style={styles.statLabel}>Remaining</Text>
             <Text style={[styles.statValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
-              ${remaining.toLocaleString()}
+              {currency}{remaining.toLocaleString()}
             </Text>
           </View>
         </View>
@@ -264,7 +264,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, onBack })
 
         {/* Sankey Diagram */}
         <View style={styles.diagramContainer} ref={diagramRef} collapsable={false}>
-          <SankeyDiagram budgetData={budgetData} />
+          <SankeyDiagram budgetData={budgetData} currency={currency} />
           <Text style={styles.scrollHint}>👈 Swipe left/right to explore the full diagram</Text>
         </View>
 
