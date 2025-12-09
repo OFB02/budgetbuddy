@@ -13,21 +13,33 @@ import {
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import SankeyDiagram from './SankeyDiagram';
+import CircleDiagrams from './CircleDiagrams';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function BudgetResultsScreen({ budgetData, plannerType, currency = '$', onBack }) {
   const diagramRef = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCircleDiagrams, setShowCircleDiagrams] = useState(false);
 
   const renderTitle = () => {
     const titles = {
-      monthly: '📅 Monthly Budget Flow',
-      goal: '🎯 Goal Savings Plan',
-      vacation: '✈️ Vacation Budget Plan',
+      monthly: 'Monthly Budget Flow',
+      goal: 'Goal Savings Plan',
+      vacation: 'Vacation Budget Plan',
     };
-    return titles[plannerType] || '📊 Budget Analysis';
+    return titles[plannerType] || 'Budget Analysis';
+  };
+
+  const getTitleIcon = () => {
+    const icons = {
+      monthly: 'calendar-month',
+      goal: 'target',
+      vacation: 'airplane',
+    };
+    return icons[plannerType] || 'chart-box';
   };
 
   const renderPlannerSpecificInfo = () => {
@@ -37,7 +49,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
       
       return (
         <View style={styles.plannerInfoCard}>
-          <Text style={styles.plannerInfoEmoji}>{emoji || '🎯'}</Text>
+          <MaterialCommunityIcons name={emoji || 'target'} size={48} color="#4a69bd" style={styles.plannerInfoIcon} />
           <Text style={styles.plannerInfoTitle}>{name || 'My Goal'}</Text>
           <View style={styles.goalProgressBar}>
             <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
@@ -45,11 +57,18 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <Text style={styles.goalProgressText}>
             {currency}{(current || 0).toLocaleString()} of {currency}{(target || 0).toLocaleString()} ({progress.toFixed(1)}%)
           </Text>
-          <Text style={styles.plannerInfoDetail}>
-            {isAchievable 
-              ? `✅ Achievable in ${months} months!` 
-              : `⚠️ Consider ${recommendedMonths} months instead`}
-          </Text>
+          <View style={styles.plannerInfoDetailRow}>
+            <MaterialCommunityIcons 
+              name={isAchievable ? 'check-circle' : 'alert-circle'} 
+              size={18} 
+              color={isAchievable ? '#2ecc71' : '#f39c12'} 
+            />
+            <Text style={styles.plannerInfoDetail}>
+              {isAchievable 
+                ? `Achievable in ${months} months!` 
+                : `Consider ${recommendedMonths} months instead`}
+            </Text>
+          </View>
         </View>
       );
     }
@@ -59,14 +78,17 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
       
       return (
         <View style={styles.plannerInfoCard}>
-          <Text style={styles.plannerInfoEmoji}>✈️</Text>
+          <MaterialCommunityIcons name="airplane" size={48} color="#4a69bd" style={styles.plannerInfoIcon} />
           <Text style={styles.plannerInfoTitle}>{destination || 'Your Trip'}</Text>
           <Text style={styles.plannerInfoDetail}>
             {duration || 0} days • {travelers || 1} traveler{travelers > 1 ? 's' : ''}
           </Text>
-          <Text style={styles.savingsGoalText}>
-            💰 Save {currency}{(monthlySavings || 0).toLocaleString()}/month for {months || 0} months
-          </Text>
+          <View style={styles.savingsGoalRow}>
+            <MaterialCommunityIcons name="piggy-bank" size={20} color="#2ecc71" />
+            <Text style={styles.savingsGoalText}>
+              Save {currency}{(monthlySavings || 0).toLocaleString()}/month for {months || 0} months
+            </Text>
+          </View>
         </View>
       );
     }
@@ -84,7 +106,12 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
     return (
       <View style={styles.insightsContainer}>
         <View style={[styles.insightCard, { backgroundColor: isHealthy ? '#2ecc7120' : '#f39c1220' }]}>
-          <Text style={styles.insightEmoji}>{isHealthy ? '✅' : '💡'}</Text>
+          <MaterialCommunityIcons 
+            name={isHealthy ? 'check-circle' : 'lightbulb-on'} 
+            size={40} 
+            color={isHealthy ? '#2ecc71' : '#f39c12'} 
+            style={styles.insightIcon}
+          />
           <View style={styles.insightContent}>
             <Text style={[styles.insightTitle, { color: isHealthy ? '#2ecc71' : '#f39c12' }]}>
               {isHealthy ? 'Healthy Budget!' : 'Budget Insights'}
@@ -103,24 +130,24 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
 
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>💵</Text>
+            <MaterialCommunityIcons name="cash" size={32} color="#2ecc71" style={styles.statIcon} />
             <Text style={styles.statLabel}>Income</Text>
             <Text style={styles.statValue}>{currency}{income.toLocaleString()}</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>📤</Text>
+            <MaterialCommunityIcons name="credit-card-outline" size={32} color="#e74c3c" style={styles.statIcon} />
             <Text style={styles.statLabel}>Expenses</Text>
             <Text style={styles.statValue}>{currency}{totalExpenses.toLocaleString()}</Text>
             <Text style={styles.statPercent}>{expenseRate}%</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>🏦</Text>
+            <MaterialCommunityIcons name="piggy-bank" size={32} color="#4a69bd" style={styles.statIcon} />
             <Text style={styles.statLabel}>Savings</Text>
             <Text style={styles.statValue}>{currency}{savings.toLocaleString()}</Text>
             <Text style={styles.statPercent}>{savingsRate}%</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>💰</Text>
+            <MaterialCommunityIcons name="wallet" size={32} color="#f39c12" style={styles.statIcon} />
             <Text style={styles.statLabel}>Remaining</Text>
             <Text style={[styles.statValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
               {currency}{remaining.toLocaleString()}
@@ -131,8 +158,8 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
     );
   };
 
-  // Export to PDF/Image
-  const handleExportAsPDF = async () => {
+  // Export Image
+  const handleExportImage = async () => {
     try {
       setIsExporting(true);
       const uri = await captureRef(diagramRef, {
@@ -157,7 +184,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
         Alert.alert('Success', 'Image saved successfully!');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to export diagram: ' + error.message);
+      Alert.alert('Error', 'Failed to export image: ' + error.message);
     } finally {
       setIsExporting(false);
     }
@@ -204,8 +231,8 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
     }
   };
 
-  // Share diagram
-  const handleShare = async () => {
+  // Create Poster
+  const handleCreatePoster = async () => {
     try {
       setIsExporting(true);
       const uri = await captureRef(diagramRef, {
@@ -217,13 +244,13 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
-          dialogTitle: 'Share Budget Flow',
+          dialogTitle: 'Create Budget Poster',
         });
       } else {
-        Alert.alert('Error', 'Sharing is not available on this device');
+        Alert.alert('Success', 'Poster created successfully!');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to share: ' + error.message);
+      Alert.alert('Error', 'Failed to create poster: ' + error.message);
     } finally {
       setIsExporting(false);
     }
@@ -262,27 +289,74 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
         {/* Planner-specific info */}
         {renderPlannerSpecificInfo()}
 
-        {/* Sankey Diagram */}
+        {/* Chart Type Toggle */}
+        <View style={styles.chartToggleContainer}>
+          <View style={styles.toggleTabsContainer}>
+            <TouchableOpacity 
+              style={[styles.toggleTab, !showCircleDiagrams && styles.toggleTabActive]}
+              onPress={() => setShowCircleDiagrams(false)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons 
+                name="chart-sankey" 
+                size={20} 
+                color={!showCircleDiagrams ? '#fff' : '#888'} 
+              />
+              <Text style={[styles.toggleTabText, !showCircleDiagrams && styles.toggleTabTextActive]}>
+                Flow
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.toggleTab, showCircleDiagrams && styles.toggleTabActive]}
+              onPress={() => setShowCircleDiagrams(true)}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons 
+                name="chart-donut" 
+                size={20} 
+                color={showCircleDiagrams ? '#fff' : '#888'} 
+              />
+              <Text style={[styles.toggleTabText, showCircleDiagrams && styles.toggleTabTextActive]}>
+                Donut
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Diagram Container */}
         <View style={styles.diagramContainer} ref={diagramRef} collapsable={false}>
-          <SankeyDiagram budgetData={budgetData} currency={currency} />
-          <Text style={styles.scrollHint}>👈 Swipe left/right to explore the full diagram</Text>
+          {showCircleDiagrams ? (
+            <CircleDiagrams budgetData={budgetData} currency={currency} />
+          ) : (
+            <SankeyDiagram budgetData={budgetData} currency={currency} />
+          )}
+          
+          <Text style={styles.scrollHint}>
+            {showCircleDiagrams 
+              ? '� View your income vs expenses distribution at a glance'
+              : '👈 Swipe left/right to explore the full diagram'}
+          </Text>
         </View>
 
         {/* Export Buttons */}
         <View style={styles.exportContainer}>
-          <Text style={styles.exportTitle}>📤 Export Options</Text>
+          <View style={styles.exportTitleRow}>
+            <MaterialCommunityIcons name="export" size={20} color="#fff" />
+            <Text style={styles.exportTitle}> Export Options</Text>
+          </View>
           <View style={styles.exportButtonsRow}>
             <TouchableOpacity 
-              style={[styles.exportButton, styles.pdfButton]}
-              onPress={handleExportAsPDF}
+              style={[styles.exportButton, styles.imageButton]}
+              onPress={handleExportImage}
               disabled={isExporting}
             >
               {isExporting ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Text style={styles.exportButtonIcon}>📄</Text>
-                  <Text style={styles.exportButtonText}>Save as PDF</Text>
+                  <MaterialCommunityIcons name="image" size={32} color="#fff" style={styles.exportButtonIcon} />
+                  <Text style={styles.exportButtonText} numberOfLines={1}>Export Image</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -296,23 +370,23 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Text style={styles.exportButtonIcon}>📊</Text>
-                  <Text style={styles.exportButtonText}>Export Excel</Text>
+                  <MaterialCommunityIcons name="file-excel" size={32} color="#fff" style={styles.exportButtonIcon} />
+                  <Text style={styles.exportButtonText} numberOfLines={1}>Export Excel</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.exportButton, styles.shareButton]}
-              onPress={handleShare}
+              style={[styles.exportButton, styles.posterButton]}
+              onPress={handleCreatePoster}
               disabled={isExporting}
             >
               {isExporting ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Text style={styles.exportButtonIcon}>🔗</Text>
-                  <Text style={styles.exportButtonText}>Share</Text>
+                  <MaterialCommunityIcons name="image-frame" size={32} color="#fff" style={styles.exportButtonIcon} />
+                  <Text style={styles.exportButtonText} numberOfLines={1}>Create Poster</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -322,22 +396,49 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
         {/* Insights and Stats */}
         {renderInsights()}
 
-        {/* Legend */}
+        {/* Legend - Dynamic based on diagram type */}
         <View style={styles.legendContainer}>
-          <Text style={styles.legendTitle}>💡 How to read this diagram</Text>
-          <Text style={styles.legendText}>
-            The flow chart above shows how your income sources combine and distribute across different categories.
-            The width of each flow represents the proportion of money flowing through that path.
-          </Text>
-          <Text style={styles.legendText}>
-            • Left side: Your income sources{'\n'}
-            • Middle: Combined total income{'\n'}
-            • Right side: Destinations (expenses, savings, remaining)
-          </Text>
+          <View style={styles.legendTitleRow}>
+            <MaterialCommunityIcons name="information" size={20} color="#fff" />
+            <Text style={styles.legendTitle}> How to read this diagram</Text>
+          </View>
+          {showCircleDiagrams ? (
+            <>
+              <Text style={styles.legendText}>
+                The donut charts above provide a visual breakdown of your income sources and spending distribution.
+                Each segment's size represents its proportion of the total.
+              </Text>
+              <Text style={styles.legendText}>
+                • Top chart: Shows where your income comes from{'\n'}
+                • Bottom chart: Shows where your money goes{'\n'}
+                • Percentages: Show each item's share of your total income{'\n'}
+                • Colors: Help distinguish between different categories
+              </Text>
+              <Text style={styles.legendText}>
+                💡 Tip: Compare the two charts to see if your spending aligns with your income distribution.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.legendText}>
+                The flow chart above shows how your income sources combine and distribute across different categories.
+                The width of each flow represents the proportion of money flowing through that path.
+              </Text>
+              <Text style={styles.legendText}>
+                • Left side: Your income sources{'\n'}
+                • Middle: Combined total income{'\n'}
+                • Right side: Destinations (expenses, savings, remaining)
+              </Text>
+              <Text style={styles.legendText}>
+                💡 Tip: Wider flows indicate larger amounts of money moving through that category.
+              </Text>
+            </>
+          )}
         </View>
 
         <TouchableOpacity style={styles.doneButton} onPress={onBack}>
-          <Text style={styles.doneButtonText}>✓ Done</Text>
+          <MaterialCommunityIcons name="check-circle" size={24} color="#fff" />
+          <Text style={styles.doneButtonText}> Done</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -381,6 +482,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
   },
+  chartToggleContainer: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    padding: 5,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toggleTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#232340',
+    borderRadius: 12,
+    padding: 4,
+  },
+  toggleTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+  },
+  toggleTabActive: {
+    backgroundColor: '#4a69bd',
+  },
+  toggleTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+  },
+  toggleTabTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   diagramContainer: {
     backgroundColor: '#232340',
     borderRadius: 16,
@@ -389,12 +529,35 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 300,
   },
+  toggleButton: {
+    backgroundColor: '#4a69bd',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  scrollHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 2,
+  },
   scrollHint: {
     fontSize: 11,
     color: '#666',
     textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 2,
   },
   insightsContainer: {
     marginBottom: 20,
@@ -406,8 +569,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  insightEmoji: {
-    fontSize: 32,
+  insightIcon: {
     marginRight: 15,
   },
   insightContent: {
@@ -437,8 +599,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: 'center',
   },
-  statEmoji: {
-    fontSize: 28,
+  statIcon: {
     marginBottom: 8,
   },
   statLabel: {
@@ -462,11 +623,15 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
+  legendTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   legendTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 10,
   },
   legendText: {
     fontSize: 13,
@@ -479,6 +644,8 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 15,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: 20,
   },
   doneButtonText: {
@@ -493,9 +660,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
   },
-  plannerInfoEmoji: {
-    fontSize: 48,
+  plannerInfoIcon: {
     marginBottom: 10,
+  },
+  plannerInfoDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  savingsGoalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
   },
   plannerInfoTitle: {
     fontSize: 22,
@@ -532,7 +709,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2ecc71',
     fontWeight: '600',
-    marginTop: 10,
   },
   exportContainer: {
     backgroundColor: '#2d2d44',
@@ -540,12 +716,16 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
   },
+  exportTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
   exportTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 15,
-    textAlign: 'center',
   },
   exportButtonsRow: {
     flexDirection: 'row',
@@ -561,22 +741,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 80,
   },
-  pdfButton: {
-    backgroundColor: '#e74c3c',
+  imageButton: {
+    backgroundColor: '#9b59b6',
   },
   excelButton: {
     backgroundColor: '#27ae60',
   },
-  shareButton: {
-    backgroundColor: '#3498db',
+  posterButton: {
+    backgroundColor: '#e74c3c',
   },
   exportButtonIcon: {
-    fontSize: 28,
     marginBottom: 5,
   },
   exportButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },
