@@ -9,20 +9,25 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SankeyDiagram from './SankeyDiagram';
 import CircleDiagrams from './CircleDiagrams';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const STORAGE_KEY = '@budgetbuddy_saved_budgets';
 
 export default function BudgetResultsScreen({ budgetData, plannerType, currency = '$', onBack }) {
   const diagramRef = useRef(null);
+  const exportRef = useRef(null); // Separate ref for export
   const [isExporting, setIsExporting] = useState(false);
   const [showCircleDiagrams, setShowCircleDiagrams] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const renderTitle = () => {
     const titles = {
@@ -162,21 +167,19 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
   const handleExportImage = async () => {
     try {
       setIsExporting(true);
-      const uri = await captureRef(diagramRef, {
+      
+      // Use exportRef which captures the full non-scrollable diagram
+      const refToCapture = exportRef.current ? exportRef : diagramRef;
+      
+      const uri = await captureRef(refToCapture, {
         format: 'png',
         quality: 1,
         result: 'tmpfile',
-      });
-      
-      const fileName = `BudgetFlow_${new Date().toISOString().split('T')[0]}.png`;
-      const newPath = `${FileSystem.cacheDirectory}${fileName}`;
-      await FileSystem.moveAsync({
-        from: uri,
-        to: newPath,
+        // Let it capture the natural size of the content
       });
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(newPath, {
+        await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
           dialogTitle: 'Save your Budget Flow',
         });
@@ -231,29 +234,61 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
     }
   };
 
-  // Create Poster
-  const handleCreatePoster = async () => {
-    try {
-      setIsExporting(true);
-      const uri = await captureRef(diagramRef, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-      });
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Create Budget Poster',
-        });
-      } else {
-        Alert.alert('Success', 'Poster created successfully!');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create poster: ' + error.message);
-    } finally {
-      setIsExporting(false);
-    }
+  // Save Budget
+  const handleSaveBudget = async () => {
+    Alert.prompt(
+      'Save Budget',
+      'Enter a name for this budget:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Save',
+          onPress: async (budgetName) => {
+            if (!budgetName || budgetName.trim() === '') {
+              Alert.alert('Error', 'Please enter a valid name');
+              return;
+            }
+
+            try {
+              setIsSaving(true);
+              
+              // Create budget object
+              const newBudget = {
+                id: Date.now().toString(),
+                name: budgetName.trim(),
+                plannerType,
+                budgetData,
+                currency,
+                savedAt: Date.now(),
+              };
+
+              // Load existing budgets
+              const existingBudgetsJson = await AsyncStorage.getItem(STORAGE_KEY);
+              const existingBudgets = existingBudgetsJson ? JSON.parse(existingBudgetsJson) : [];
+
+              // Add new budget to the beginning of the array
+              const updatedBudgets = [newBudget, ...existingBudgets];
+
+              // Save to storage
+              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedBudgets));
+
+              Alert.alert('Success', 'Budget saved successfully!');
+            } catch (error) {
+              console.error('Error saving budget:', error);
+              Alert.alert('Error', 'Failed to save budget: ' + error.message);
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '',
+      'default'
+    );
   };
 
   const formatLabel = (key) => {
@@ -375,23 +410,24 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
                 </>
               )}
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.exportButton, styles.posterButton]}
-              onPress={handleCreatePoster}
-              disabled={isExporting}
-            >
-              {isExporting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="image-frame" size={32} color="#fff" style={styles.exportButtonIcon} />
-                  <Text style={styles.exportButtonText} numberOfLines={1}>Create Poster</Text>
-                </>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Save Budget Button */}
+        <TouchableOpacity 
+          style={styles.saveBudgetButton}
+          onPress={handleSaveBudget}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="bookmark-plus" size={24} color="#fff" />
+              <Text style={styles.saveBudgetButtonText}> Save This Budget</Text>
+            </>
+          )}
+        </TouchableOpacity>
 
         {/* Insights and Stats */}
         {renderInsights()}
@@ -441,6 +477,30 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <Text style={styles.doneButtonText}> Done</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Hidden export view - captures full diagram without scroll constraints */}
+      <View 
+        style={styles.exportView} 
+        ref={exportRef} 
+        collapsable={false}
+      >
+        <View style={styles.exportHeader}>
+          <Text style={styles.exportHeaderTitle}>{renderTitle()}</Text>
+          <Text style={styles.exportHeaderSubtitle}>Budget Flow Visualization</Text>
+        </View>
+        <View style={styles.exportDiagramWrapper}>
+          {showCircleDiagrams ? (
+            <CircleDiagrams budgetData={budgetData} currency={currency} />
+          ) : (
+            <SankeyDiagram budgetData={budgetData} currency={currency} />
+          )}
+        </View>
+        <View style={styles.exportFooter}>
+          <Text style={styles.exportFooterText}>
+            Created with BudgetBuddy • {new Date().toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -747,9 +807,6 @@ const styles = StyleSheet.create({
   excelButton: {
     backgroundColor: '#27ae60',
   },
-  posterButton: {
-    backgroundColor: '#e74c3c',
-  },
   exportButtonIcon: {
     marginBottom: 5,
   },
@@ -758,5 +815,67 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  saveBudgetButton: {
+    backgroundColor: '#f39c12',
+    padding: 18,
+    borderRadius: 15,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  saveBudgetButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // Export view styles - hidden view for capturing full diagram
+  exportView: {
+    position: 'absolute',
+    left: -10000, // Hide off-screen
+    top: 0,
+    backgroundColor: '#1a1a2e',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    width: SCREEN_WIDTH * 1.6, // Wide enough for full Sankey diagram
+  },
+  exportHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: '#4a69bd',
+  },
+  exportHeaderTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5,
+  },
+  exportHeaderSubtitle: {
+    fontSize: 16,
+    color: '#aaa',
+  },
+  exportDiagramWrapper: {
+    backgroundColor: '#232340',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+  },
+  exportFooter: {
+    alignItems: 'center',
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  exportFooterText: {
+    fontSize: 14,
+    color: '#888',
   },
 });

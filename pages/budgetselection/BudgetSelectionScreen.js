@@ -63,6 +63,14 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
           color="#e74c3c"
           onPress={() => handleOptionPress('goal')}
         />
+
+        <BudgetOption
+          emoji="💾"
+          title="Saved Budgets"
+          description="View and manage your saved budgets"
+          color="#f39c12"
+          onPress={() => handleOptionPress('saved')}
+        />
       </View>
 
       <View style={styles.footer}>

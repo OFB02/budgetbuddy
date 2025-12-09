@@ -90,7 +90,7 @@ export default function SankeyDiagram({ budgetData, currency = '$' }) {
   // Handle remaining or over-budget
   if (isOverBudget) {
     dataItems.push({
-      name: 'Over Budget ⚠️',
+      name: 'Over\nBudget ⚠️',
       value: overBudgetAmount,
       color: '#e74c3c', // Red color for over budget
       type: 'overbudget'
@@ -162,7 +162,7 @@ export default function SankeyDiagram({ budgetData, currency = '$' }) {
       y: currentLeftY,
       width: nodeWidth,
       height,
-      color: PALETTE[(index + 5) % PALETTE.length],
+      color: index === 2 ? '#00d2ff' : PALETTE[(index + 5) % PALETTE.length],
       value: item.value,
       label: item.name || 'Income'
     });
@@ -247,8 +247,22 @@ export default function SankeyDiagram({ budgetData, currency = '$' }) {
     const flowHeight = Math.max(3, dest.value * scale);
     
     // Determine if flow comes from middle node or over budget extension
-    const sourceIsOverBudget = isOverBudget && currentMiddleDistY >= middleNode.height;
-    const sourceNode = sourceIsOverBudget ? overBudgetExtension : middleNode;
+    // Calculate what percentage of this flow comes from the over budget zone
+    const flowStartsAtY = currentMiddleDistY;
+    const flowEndsAtY = currentMiddleDistY + flowHeight;
+    const middleNodeEndsAtY = middleNode.y + middleNode.height;
+    
+    let overBudgetPercentage = 0;
+    if (isOverBudget && flowEndsAtY > middleNodeEndsAtY) {
+      // Calculate how much of the flow is in the over budget zone
+      const overlapStart = Math.max(flowStartsAtY, middleNodeEndsAtY);
+      const overlapEnd = flowEndsAtY;
+      const overlapHeight = overlapEnd - overlapStart;
+      overBudgetPercentage = (overlapHeight / flowHeight) * 100;
+    }
+    
+    // Apply red gradient only if 40% or more comes from over budget
+    const sourceIsOverBudget = overBudgetPercentage >= 40;
     
     const start = {
       x: middleNode.x + middleNode.width,
@@ -345,7 +359,7 @@ export default function SankeyDiagram({ budgetData, currency = '$' }) {
                 <SvgText
                   x={node.x - 8}
                   y={node.y + node.height / 2 + (labelHeight / 2) + 8}
-                  fill={node.color}
+                  fill={i === 2 ? '#00d2ff' : node.color}
                   fontSize="10"
                   fontWeight="500"
                   textAnchor="end"
@@ -419,11 +433,21 @@ export default function SankeyDiagram({ budgetData, currency = '$' }) {
                 fontWeight="bold"
                 textAnchor="middle"
               >
-                Over Budget
+                Over
               </SvgText>
               <SvgText
                 x={overBudgetExtension.x + overBudgetExtension.width / 2}
-                y={overBudgetExtension.y + overBudgetExtension.height + 30}
+                y={overBudgetExtension.y + overBudgetExtension.height + 28}
+                fill={overBudgetExtension.color}
+                fontSize="11"
+                fontWeight="bold"
+                textAnchor="middle"
+              >
+                Budget
+              </SvgText>
+              <SvgText
+                x={overBudgetExtension.x + overBudgetExtension.width / 2}
+                y={overBudgetExtension.y + overBudgetExtension.height + 42}
                 fill={overBudgetExtension.color}
                 fontSize="10"
                 fontWeight="600"
