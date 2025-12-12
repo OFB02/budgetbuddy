@@ -6,21 +6,22 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const BudgetOption = ({ emoji, title, description, onPress, color }) => (
+const BudgetOption = ({ iconName, title, description, onPress, color }) => (
   <TouchableOpacity
     style={[styles.optionCard, { borderLeftColor: color }]}
     onPress={onPress}
     activeOpacity={0.8}
   >
-    <View style={styles.optionIcon}>
-      <Text style={styles.optionEmoji}>{emoji}</Text>
+    <View style={[styles.optionIcon, { backgroundColor: color + '20' }]}>
+      <MaterialCommunityIcons name={iconName} size={28} color={color} />
     </View>
     <View style={styles.optionContent}>
       <Text style={styles.optionTitle}>{title}</Text>
       <Text style={styles.optionDescription}>{description}</Text>
     </View>
-    <Text style={styles.arrow}>›</Text>
+    <MaterialCommunityIcons name="chevron-right" size={24} color="#666" />
   </TouchableOpacity>
 );
 
@@ -34,14 +35,16 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerEmoji}>💰</Text>
+        <View style={styles.headerIconContainer}>
+          <MaterialCommunityIcons name="wallet" size={40} color="#4a69bd" />
+        </View>
         <Text style={styles.title}>Budget Buddy</Text>
         <Text style={styles.subtitle}>What would you like to plan today?</Text>
       </View>
 
       <View style={styles.optionsContainer}>
         <BudgetOption
-          emoji="📅"
+          iconName="calendar-month"
           title="Monthly Planner"
           description="Track your monthly income and expenses"
           color="#4a69bd"
@@ -49,7 +52,7 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
         />
 
         <BudgetOption
-          emoji="✈️"
+          iconName="airplane"
           title="Plan for a Vacation"
           description="Save up for your dream getaway"
           color="#2ecc71"
@@ -57,7 +60,7 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
         />
 
         <BudgetOption
-          emoji="🎯"
+          iconName="target"
           title="Plan for a Goal"
           description="Set and achieve your financial goals"
           color="#e74c3c"
@@ -65,7 +68,7 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
         />
 
         <BudgetOption
-          emoji="💾"
+          iconName="bookmark-multiple"
           title="Saved Budgets"
           description="View and manage your saved budgets"
           color="#f39c12"
@@ -74,7 +77,8 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Select an option to get started</Text>
+        <MaterialCommunityIcons name="information" size={16} color="#666" />
+        <Text style={styles.footerText}> Select an option to get started</Text>
       </View>
     </SafeAreaView>
   );
@@ -89,10 +93,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 40,
     paddingBottom: 30,
+    paddingHorizontal: 20,
   },
-  headerEmoji: {
-    fontSize: 50,
-    marginBottom: 10,
+  headerIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#232340',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#4a69bd',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
     fontSize: 32,
@@ -117,18 +132,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   optionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#1a1a2e',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
-  },
-  optionEmoji: {
-    fontSize: 24,
   },
   optionContent: {
     flex: 1,
@@ -143,17 +159,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888',
   },
-  arrow: {
-    fontSize: 28,
-    color: '#444',
-    fontWeight: '300',
-  },
   footer: {
     padding: 20,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   footerText: {
-    color: '#555',
+    color: '#666',
     fontSize: 14,
   },
 });

@@ -89,10 +89,65 @@ export default function SavedBudgetsScreen({ onBack, onViewBudget }) {
   };
 
   const renderBudgetCard = (budget) => {
-    const { id, name, plannerType, budgetData, currency, savedAt } = budget;
-    const { income = 0, savings = 0, remaining = 0 } = budgetData || {};
+    const { id, name, plannerType, budgetData, currency, savedAt, goalType } = budget;
     const color = getPlannerColor(plannerType);
     const icon = getPlannerIcon(plannerType);
+
+    // Handle different planner types
+    let stats = [];
+    if (plannerType === 'goal') {
+      const { 
+        income = 0, 
+        savings = 0, 
+        targetAmount = 0,
+        currentSavings = 0,
+        amountNeeded = 0,
+        targetMonths = 0
+      } = budgetData || {};
+      
+      stats = [
+        {
+          icon: 'bullseye-arrow',
+          label: 'Target',
+          value: `${currency}${targetAmount.toLocaleString()}`,
+          color: '#e74c3c'
+        },
+        {
+          icon: 'wallet',
+          label: 'Saved',
+          value: `${currency}${currentSavings.toLocaleString()}`,
+          color: '#10b981'
+        },
+        {
+          icon: 'calendar-clock',
+          label: 'Timeline',
+          value: `${targetMonths} months`,
+          color: '#3b82f6'
+        }
+      ];
+    } else {
+      const { income = 0, savings = 0, remaining = 0 } = budgetData || {};
+      stats = [
+        {
+          icon: 'cash',
+          label: 'Income',
+          value: `${currency}${income.toLocaleString()}`,
+          color: '#2ecc71'
+        },
+        {
+          icon: 'piggy-bank',
+          label: 'Savings',
+          value: `${currency}${savings.toLocaleString()}`,
+          color: '#4a69bd'
+        },
+        {
+          icon: 'wallet',
+          label: 'Remaining',
+          value: `${currency}${remaining.toLocaleString()}`,
+          color: remaining >= 0 ? '#2ecc71' : '#e74c3c'
+        }
+      ];
+    }
 
     return (
       <View key={id} style={[styles.budgetCard, { borderLeftColor: color }]}>
@@ -103,7 +158,9 @@ export default function SavedBudgetsScreen({ onBack, onViewBudget }) {
         >
           <View style={styles.budgetHeader}>
             <View style={styles.budgetTitleRow}>
-              <MaterialCommunityIcons name={icon} size={28} color={color} />
+              <View style={[styles.iconContainer, { backgroundColor: `${color}20` }]}>
+                <MaterialCommunityIcons name={icon} size={24} color={color} />
+              </View>
               <View style={styles.budgetTitleContainer}>
                 <Text style={styles.budgetName}>{name}</Text>
                 <Text style={styles.budgetDate}>{formatDate(savedAt)}</Text>
@@ -112,23 +169,15 @@ export default function SavedBudgetsScreen({ onBack, onViewBudget }) {
           </View>
 
           <View style={styles.budgetStatsRow}>
-            <View style={styles.budgetStat}>
-              <MaterialCommunityIcons name="cash" size={18} color="#2ecc71" />
-              <Text style={styles.budgetStatLabel}>Income</Text>
-              <Text style={styles.budgetStatValue}>{currency}{income.toLocaleString()}</Text>
-            </View>
-            <View style={styles.budgetStat}>
-              <MaterialCommunityIcons name="piggy-bank" size={18} color="#4a69bd" />
-              <Text style={styles.budgetStatLabel}>Savings</Text>
-              <Text style={styles.budgetStatValue}>{currency}{savings.toLocaleString()}</Text>
-            </View>
-            <View style={styles.budgetStat}>
-              <MaterialCommunityIcons name="wallet" size={18} color="#f39c12" />
-              <Text style={styles.budgetStatLabel}>Remaining</Text>
-              <Text style={[styles.budgetStatValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
-                {currency}{remaining.toLocaleString()}
-              </Text>
-            </View>
+            {stats.map((stat, index) => (
+              <View key={index} style={styles.budgetStat}>
+                <MaterialCommunityIcons name={stat.icon} size={18} color={stat.color} />
+                <Text style={styles.budgetStatLabel}>{stat.label}</Text>
+                <Text style={[styles.budgetStatValue, { color: stat.color }]}>
+                  {stat.value}
+                </Text>
+              </View>
+            ))}
           </View>
 
           <View style={styles.viewDetailsRow}>
@@ -261,6 +310,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   budgetTitleContainer: {
     flex: 1,

@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Animated, Image } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function WelcomeScreen({ onFinish }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const iconRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Fade in animation
@@ -17,6 +20,16 @@ export default function WelcomeScreen({ onFinish }) {
         toValue: 1,
         friction: 8,
         tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(iconRotate, {
+        toValue: 1,
+        duration: 1000,
         useNativeDriver: true,
       }),
     ]).start();
@@ -46,20 +59,28 @@ export default function WelcomeScreen({ onFinish }) {
           },
         ]}
       >
-        <Animated.Image 
-          source={require('../../assets/logo.png')} 
+        {/* Simple, elegant logo */}
+        <Animated.View 
           style={[
-            styles.logo,
+            styles.logoContainer,
             {
               opacity: fadeAnim,
               transform: [{ scale: scaleAnim }],
             },
           ]}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Welcome to</Text>
-        <Text style={styles.appName}>Budget Buddy</Text>
-        <Text style={styles.subtitle}>Take control of your finances</Text>
+        >
+          <MaterialCommunityIcons name="wallet" size={64} color="#4a69bd" />
+        </Animated.View>
+        
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
+        >
+          <Text style={styles.appName}>Budget Buddy</Text>
+          <Text style={styles.subtitle}>Take control of your finances</Text>
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -74,25 +95,34 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
+    paddingHorizontal: 40,
   },
-  logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    color: '#888',
-    marginBottom: 5,
+  logoContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#232340',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+    shadowColor: '#4a69bd',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   appName: {
-    fontSize: 42,
+    fontSize: 48,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 15,
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#4a69bd',
+    color: '#888',
+    textAlign: 'center',
+    fontWeight: '400',
   },
 });

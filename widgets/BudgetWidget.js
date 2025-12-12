@@ -240,12 +240,12 @@ export const BudgetWidgetView = ({ budgetData, currency = '$', size = 'medium' }
         <View style={styles.statsCompact}>
           <View style={styles.statRowCompact}>
             <Text style={styles.statLabelCompact}>Income</Text>
-            <Text style={styles.statValueCompact}>{currency}{income.toLocaleString()}</Text>
+            <Text style={styles.statValueCompact}>{currency} {income.toLocaleString()}</Text>
           </View>
           <View style={styles.statRowCompact}>
             <Text style={styles.statLabelCompact}>Savings</Text>
             <Text style={[styles.statValueCompact, { color: '#2ecc71' }]}>
-              {currency}{savings.toLocaleString()}
+              {currency} {savings.toLocaleString()}
             </Text>
           </View>
         </View>
@@ -255,19 +255,19 @@ export const BudgetWidgetView = ({ budgetData, currency = '$', size = 'medium' }
           <View style={styles.statItem}>
             <MaterialCommunityIcons name="cash" size={16} color="#2ecc71" />
             <Text style={styles.statLabel}>Income</Text>
-            <Text style={styles.statValue}>{currency}{income.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency} {income.toLocaleString()}</Text>
           </View>
           
           <View style={styles.statItem}>
             <MaterialCommunityIcons name="credit-card-outline" size={16} color="#e74c3c" />
             <Text style={styles.statLabel}>Expenses</Text>
-            <Text style={styles.statValue}>{currency}{totalExpenses.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency} {totalExpenses.toLocaleString()}</Text>
           </View>
           
           <View style={styles.statItem}>
             <MaterialCommunityIcons name="piggy-bank" size={16} color="#4a69bd" />
             <Text style={styles.statLabel}>Savings</Text>
-            <Text style={styles.statValue}>{currency}{savings.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{currency} {savings.toLocaleString()}</Text>
             <Text style={styles.statPercent}>{savingsRate}%</Text>
           </View>
           
@@ -275,7 +275,7 @@ export const BudgetWidgetView = ({ budgetData, currency = '$', size = 'medium' }
             <MaterialCommunityIcons name="wallet" size={16} color="#f39c12" />
             <Text style={styles.statLabel}>Left</Text>
             <Text style={[styles.statValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
-              {currency}{remaining.toLocaleString()}
+              {currency} {remaining.toLocaleString()}
             </Text>
           </View>
         </View>
