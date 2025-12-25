@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SankeyDiagram from './SankeyDiagram';
@@ -199,36 +199,129 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
       setIsExporting(true);
       const { income = 0, expenses = {}, savings = 0, remaining = 0 } = budgetData || {};
       
-      // Create CSV content
-      let csvContent = 'Category,Amount,Percentage\n';
-      csvContent += `Income,${income},100%\n\n`;
-      csvContent += 'EXPENSES:\n';
+      // Create beautifully formatted CSV content
+      let csvLines = [];
+      
+      // ========== HEADER SECTION ==========
+      csvLines.push(`"MONTHLY BUDGET PLAN",,,,`);
+      csvLines.push(`"Generated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}",,,,`);
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
+      
+      // ========== BUDGET SUMMARY SECTION ==========
+      csvLines.push('"===== BUDGET OVERVIEW =====",,,,');
+      csvLines.push(',,,,');
+      csvLines.push('"Category","Amount","Percentage"');
+      csvLines.push(`"Total Income","${currency}${income}","100.00%"`);
+      csvLines.push(',,,,');
+      
+      // ========== EXPENSES BREAKDOWN ==========
+      csvLines.push('"===== EXPENSES BREAKDOWN =====",,,,');
+      csvLines.push(',,,,');
+      csvLines.push('"Category","Amount","Percentage"');
+      
+      const totalExpenses = Object.values(expenses).reduce((sum, val) => sum + (val || 0), 0);
       
       Object.entries(expenses).forEach(([key, value]) => {
         const percentage = income > 0 ? ((value / income) * 100).toFixed(2) : 0;
-        csvContent += `${formatLabel(key)},${value},${percentage}%\n`;
+        csvLines.push(`"${formatLabel(key)}","${currency}${value}","${percentage}%"`);
       });
       
-      csvContent += `\nSavings,${savings},${income > 0 ? ((savings / income) * 100).toFixed(2) : 0}%\n`;
-      csvContent += `Remaining,${remaining},${income > 0 ? ((remaining / income) * 100).toFixed(2) : 0}%\n`;
+      csvLines.push(',,,,');
+      csvLines.push(`"Total Expenses","${currency}${totalExpenses}","${income > 0 ? ((totalExpenses / income) * 100).toFixed(2) : 0}%"`);
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
       
-      const fileName = `BudgetData_${new Date().toISOString().split('T')[0]}.csv`;
-      const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+      // ========== SAVINGS & REMAINING ==========
+      csvLines.push('"===== SAVINGS & REMAINING =====",,,,');
+      csvLines.push(',,,,');
+      csvLines.push('"Category","Amount","Percentage"');
+      csvLines.push(`"Savings","${currency}${savings}","${income > 0 ? ((savings / income) * 100).toFixed(2) : 0}%"`);
+      csvLines.push(`"Remaining","${currency}${remaining}","${income > 0 ? ((remaining / income) * 100).toFixed(2) : 0}%"`);
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
       
-      await FileSystem.writeAsStringAsync(filePath, csvContent, {
-        encoding: FileSystem.EncodingType.UTF8,
+      // ========== CHART DATA SECTION ==========
+      csvLines.push('"===== CHART-READY DATA =====",,,,');
+      csvLines.push('"Use this data to create charts:",,,,');
+      csvLines.push(',,,,');
+      
+      // Financial Breakdown for Pie Chart
+      csvLines.push('"EXPENSES DISTRIBUTION (Pie Chart Data)",,,,');
+      csvLines.push('"Category","Amount",,,"Percentage"');
+      Object.entries(expenses).forEach(([key, value]) => {
+        const percentage = income > 0 ? ((value / income) * 100).toFixed(2) : 0;
+        csvLines.push(`"${formatLabel(key)}",${value},,,${percentage}`);
       });
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
+      
+      // Budget Summary for Bar Chart
+      csvLines.push('"BUDGET SUMMARY (Bar Chart Data)",,,,');
+      csvLines.push('"Metric","Amount"');
+      csvLines.push(`"Income",${income}`);
+      csvLines.push(`"Total Expenses",${totalExpenses}`);
+      csvLines.push(`"Savings",${savings}`);
+      csvLines.push(`"Remaining",${remaining}`);
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
+      
+      // ========== INSIGHTS ==========
+      const savingsRate = income > 0 ? ((savings / income) * 100).toFixed(1) : 0;
+      const expenseRate = income > 0 ? ((totalExpenses / income) * 100).toFixed(1) : 0;
+      const isHealthy = remaining >= 0 && savingsRate >= 10;
+      
+      csvLines.push('"===== BUDGET INSIGHTS =====",,,,');
+      csvLines.push(',,,,');
+      
+      if (isHealthy) {
+        csvLines.push(`"CHECK","Healthy Budget! You're saving ${savingsRate}% of your income.",,`);
+        csvLines.push(`"TIP","Keep up the great work with your savings habits!",,`);
+      } else if (remaining < 0) {
+        csvLines.push(`"ALERT","Your expenses exceed your income by ${currency}${Math.abs(remaining)}.",,`);
+        csvLines.push(`"TIP","Consider reducing non-essential spending to balance your budget.",,`);
+      } else if (savingsRate < 10) {
+        csvLines.push(`"TIP","Try to increase your savings to at least 10% of your income.",,`);
+        csvLines.push(`"TIP","Current savings rate: ${savingsRate}%",,`);
+      }
+      
+      csvLines.push(',,,,');
+      csvLines.push(',,,,');
+      
+      // ========== FOOTER ==========
+      csvLines.push('"=============================",,,,');
+      csvLines.push(`"Created with BudgetBuddy","","","Export Date: ${new Date().toLocaleDateString()}",`);
+      
+      const csvContent = csvLines.join('\n');
 
+      const fileName = `MonthlyBudget_${new Date().toISOString().split('T')[0]}_${Date.now()}.csv`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      // Write file
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
+
+      // Verify file was created
+      const fileInfo = await FileSystem.getInfoAsync(fileUri);
+      if (!fileInfo.exists) {
+        throw new Error('File was not created successfully');
+      }
+
+      // Share the file
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(filePath, {
+        await Sharing.shareAsync(fileUri, {
           mimeType: 'text/csv',
           dialogTitle: 'Export Budget Data',
+          UTI: 'public.comma-separated-values-text',
         });
       } else {
-        Alert.alert('Success', 'CSV file created successfully!');
+        Alert.alert('Export Successful', `File saved as: ${fileName}`);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to export to Excel: ' + error.message);
+      console.error('Error exporting:', error);
+      Alert.alert(
+        'Export Error', 
+        `Failed to export budget data.\n\nError: ${error.message || 'Unknown error'}\n\nPlease try again.`
+      );
     } finally {
       setIsExporting(false);
     }
@@ -406,7 +499,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
               ) : (
                 <>
                   <MaterialCommunityIcons name="file-excel" size={32} color="#fff" style={styles.exportButtonIcon} />
-                  <Text style={styles.exportButtonText} numberOfLines={1}>Export Excel</Text>
+                  <Text style={styles.exportButtonText} numberOfLines={1}>Export to Spreadsheet</Text>
                 </>
               )}
             </TouchableOpacity>

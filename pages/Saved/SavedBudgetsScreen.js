@@ -125,6 +125,35 @@ export default function SavedBudgetsScreen({ onBack, onViewBudget }) {
           color: '#3b82f6'
         }
       ];
+    } else if (plannerType === 'vacation') {
+      const { 
+        grandTotal = 0, 
+        currentSaved = 0,
+        duration = 0,
+        travelers = 1,
+        monthsToSave = 0
+      } = budgetData || {};
+      
+      stats = [
+        {
+          icon: 'currency-usd',
+          label: 'Total Budget',
+          value: `${currency}${grandTotal.toLocaleString()}`,
+          color: '#2ecc71'
+        },
+        {
+          icon: 'calendar',
+          label: 'Duration',
+          value: `${duration} days`,
+          color: '#3b82f6'
+        },
+        {
+          icon: 'account-group',
+          label: 'Travelers',
+          value: `${travelers} ${travelers === 1 ? 'person' : 'people'}`,
+          color: '#f59e0b'
+        }
+      ];
     } else {
       const { income = 0, savings = 0, remaining = 0 } = budgetData || {};
       stats = [

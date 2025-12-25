@@ -9,6 +9,8 @@ import VacationPlannerScreen from './pages/planforavacation/VacationPlannerScree
 import GoalPlannerScreen from './pages/planforagoal/GoalPlannerScreen';
 import SavedBudgetsScreen from './pages/Saved/SavedBudgetsScreen';
 import BudgetResultsScreen from './budgetresults/BudgetResultsScreen';
+import VacationResultsScreen from './budgetresults/VacationResultsScreen';
+import GoalResultsScreen from './budgetresults/GoalResultsScreen';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('welcome');
@@ -41,6 +43,41 @@ export default function App() {
     setSelectedBudget(null);
   };
 
+  const renderSavedBudgetScreen = () => {
+    if (!selectedBudget) return null;
+
+    const { plannerType, budgetData, currency } = selectedBudget;
+
+    // Route to the appropriate screen based on budget type
+    if (plannerType === 'vacation') {
+      return (
+        <VacationResultsScreen
+          vacationData={budgetData}
+          currency={currency || '$'}
+          onBack={handleBackToSaved}
+        />
+      );
+    } else if (plannerType === 'goal') {
+      return (
+        <GoalResultsScreen
+          goalData={budgetData}
+          currency={currency || '$'}
+          onBack={handleBackToSaved}
+        />
+      );
+    } else {
+      // Default to monthly budget (plannerType === 'monthly' or undefined)
+      return (
+        <BudgetResultsScreen
+          budgetData={budgetData}
+          plannerType={plannerType || 'monthly'}
+          currency={currency || '$'}
+          onBack={handleBackToSaved}
+        />
+      );
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -65,14 +102,7 @@ export default function App() {
           onViewBudget={handleViewSavedBudget}
         />
       )}
-      {currentScreen === 'viewBudget' && selectedBudget && (
-        <BudgetResultsScreen
-          budgetData={selectedBudget.budgetData}
-          plannerType={selectedBudget.plannerType}
-          currency={selectedBudget.currency}
-          onBack={handleBackToSaved}
-        />
-      )}
+      {currentScreen === 'viewBudget' && selectedBudget && renderSavedBudgetScreen()}
     </View>
   );
 }

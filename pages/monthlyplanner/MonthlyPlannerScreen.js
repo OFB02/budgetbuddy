@@ -11,7 +11,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import BudgetResultsScreen from '../../budgetresults/BudgetResultsScreen';
 
 export default function MonthlyPlannerScreen({ onBack }) {
@@ -319,11 +319,11 @@ export default function MonthlyPlannerScreen({ onBack }) {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#e2e8f0" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#e2e8f0" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <View style={styles.iconCircle}>
-              <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+              <MaterialCommunityIcons name="calendar-outline" size={20} color="#3b82f6" />
             </View>
             <Text style={styles.headerTitle}>Monthly Planner</Text>
           </View>
@@ -332,7 +332,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
             style={styles.currencyButton}
           >
             <Text style={styles.currencyButtonText}>{currency}</Text>
-            <Ionicons name="chevron-down" size={16} color="#64748b" />
+            <MaterialCommunityIcons name="chevron-down" size={16} color="#64748b" />
           </TouchableOpacity>
         </View>
 
@@ -388,7 +388,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                   style={styles.customCurrencyButton}
                   onPress={() => setShowCustomInput(true)}
                 >
-                  <Ionicons name="pencil" size={18} color="#fff" style={styles.customCurrencyIcon} />
+                  <MaterialCommunityIcons name="pencil" size={18} color="#fff" style={styles.customCurrencyIcon} />
                   <Text style={styles.customCurrencyButtonText}>
                     Enter Custom Currency
                   </Text>
@@ -407,7 +407,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     style={styles.confirmCustomButton}
                     onPress={handleCustomCurrency}
                   >
-                    <Ionicons name="checkmark" size={20} color="#fff" />
+                    <MaterialCommunityIcons name="check" size={20} color="#fff" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.cancelCustomButton}
@@ -416,7 +416,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                       setCustomCurrency('');
                     }}
                   >
-                    <Ionicons name="close" size={20} color="#fff" />
+                    <MaterialCommunityIcons name="close" size={20} color="#fff" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -450,7 +450,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                 onPress={() => setShowIncomeOptions(!showIncomeOptions)} 
                 style={styles.addButton}
               >
-                <Ionicons name="add" size={18} color="#fff" />
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -463,7 +463,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     onPress={() => setShowIncomeOptions(false)}
                     style={styles.closeOptionsButton}
                   >
-                    <Ionicons name="close" size={20} color="#ef4444" />
+                    <MaterialCommunityIcons name="close" size={20} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.optionsList}>
@@ -478,7 +478,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                         ]}
                         onPress={() => addPredefinedIncome(option)}
                       >
-                        {isAdded && <Ionicons name="checkmark-circle" size={16} color="#fff" style={styles.checkIcon} />}
+                        {isAdded && <MaterialCommunityIcons name="check-circle" size={16} color="#fff" style={styles.checkIcon} />}
                         <Text style={[
                           styles.optionButtonText,
                           isAdded && styles.optionButtonTextAdded
@@ -492,7 +492,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     style={[styles.optionButton, styles.customOptionButton]}
                     onPress={() => addIncome()}
                   >
-                    <Ionicons name="create-outline" size={16} color="#fff" />
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color="#fff" />
                     <Text style={styles.optionButtonText}>Custom</Text>
                   </TouchableOpacity>
                 </View>
@@ -502,7 +502,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
             {incomes.map((income, index) => (
               <View key={income.id} style={styles.itemRow}>
                 <View style={styles.inputLabelContainer}>
-                  <Ionicons name="document-text-outline" size={18} color="#64748b" />
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color="#64748b" />
                   <TextInput
                     style={styles.nameInput}
                     value={income.name}
@@ -527,7 +527,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     onPress={() => removeIncome(income.id)} 
                     style={styles.removeButton}
                   >
-                    <Ionicons name="close-circle" size={24} color="#ef4444" />
+                    <MaterialCommunityIcons name="close-circle" size={24} color="#ef4444" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -547,7 +547,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                 onPress={() => setShowExpenseOptions(!showExpenseOptions)} 
                 style={styles.addButton}
               >
-                <Ionicons name="add" size={18} color="#fff" />
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -560,7 +560,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     onPress={() => setShowExpenseOptions(false)}
                     style={styles.closeOptionsButton}
                   >
-                    <Ionicons name="close" size={20} color="#ef4444" />
+                    <MaterialCommunityIcons name="close" size={20} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.optionsList}>
@@ -575,7 +575,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                         ]}
                         onPress={() => addPredefinedExpense(option)}
                       >
-                        {isAdded && <Ionicons name="checkmark-circle" size={16} color="#fff" style={styles.checkIcon} />}
+                        {isAdded && <MaterialCommunityIcons name="check-circle" size={16} color="#fff" style={styles.checkIcon} />}
                         <Text style={[
                           styles.optionButtonText,
                           isAdded && styles.optionButtonTextAdded
@@ -589,7 +589,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     style={[styles.optionButton, styles.customOptionButton]}
                     onPress={() => addExpense()}
                   >
-                    <Ionicons name="create-outline" size={16} color="#fff" />
+                    <MaterialCommunityIcons name="pencil-outline" size={16} color="#fff" />
                     <Text style={styles.optionButtonText}>Custom</Text>
                   </TouchableOpacity>
                 </View>
@@ -599,7 +599,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
             {expenses.map((expense, index) => (
               <View key={expense.id} style={styles.itemRow}>
                 <View style={styles.inputLabelContainer}>
-                  <Ionicons name="document-text-outline" size={18} color="#64748b" />
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color="#64748b" />
                   <TextInput
                     style={styles.nameInput}
                     value={expense.name}
@@ -624,7 +624,7 @@ export default function MonthlyPlannerScreen({ onBack }) {
                     onPress={() => removeExpense(expense.id)} 
                     style={styles.removeButton}
                   >
-                    <Ionicons name="close-circle" size={24} color="#ef4444" />
+                    <MaterialCommunityIcons name="close-circle" size={24} color="#ef4444" />
                   </TouchableOpacity>
                 )}
               </View>

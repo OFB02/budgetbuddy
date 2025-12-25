@@ -56,7 +56,8 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
 
   // Format currency
   const formatCurrency = (amount) => {
-    return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const safeAmount = amount || 0;
+    return `${currency}${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
   // Render savings timeline graph
