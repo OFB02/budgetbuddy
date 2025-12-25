@@ -12,7 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import BudgetResultsScreen from '../../budgetresults/BudgetResultsScreen';
+import VacationResultsScreen from '../../budgetresults/VacationResultsScreen';
 
 const vacationCategories = [
   {
@@ -71,6 +71,13 @@ const vacationCategories = [
     color: '#a855f7',
     gradient: ['#a855f7', '#9333ea'],
   },
+  {
+    id: 'other',
+    icon: 'compass-rose',
+    label: 'Other',
+    color: '#14b8a6',
+    gradient: ['#14b8a6', '#0d9488'],
+  },
 ];
 
 const currencies = [
@@ -127,12 +134,12 @@ const currencies = [
 ];
 
 const budgetCategories = [
-  { id: 'flights', icon: 'airplane', label: 'Flights', color: '#3b82f6' },
-  { id: 'accommodation', icon: 'bed', label: 'Accommodation', color: '#ec4899' },
-  { id: 'dailyFood', icon: 'food', label: 'Food per Day', color: '#f59e0b', perPerson: true, perDay: true },
-  { id: 'activities', icon: 'ticket', label: 'Activities & Tours', color: '#8b5cf6' },
-  { id: 'transportation', icon: 'car', label: 'Local Transport', color: '#10b981' },
-  { id: 'shopping', icon: 'shopping', label: 'Shopping', color: '#06b6d4' },
+  { id: 'flights', icon: 'airplane', label: 'Flights', color: '#3b82f6', isTotal: true },
+  { id: 'accommodation', icon: 'bed', label: 'Accommodation', color: '#ec4899', isTotal: true },
+  { id: 'dailyFood', icon: 'food', label: 'Food per Day', color: '#f59e0b', perDay: true },
+  { id: 'activities', icon: 'ticket', label: 'Activities & Tours', color: '#8b5cf6', isTotal: true },
+  { id: 'transportation', icon: 'car', label: 'Local Transport', color: '#10b981', isTotal: true },
+  { id: 'shopping', icon: 'shopping', label: 'Shopping', color: '#06b6d4', isTotal: true },
 ];
 
 const questions = [
@@ -230,19 +237,30 @@ export default function VacationPlannerScreen({ onBack }) {
   const [duration, setDuration] = useState('');
   const [travelers, setTravelers] = useState('');
   
-  // Budget Items
+  // Budget Items - storing both total and per person values
   const [budgetItems, setBudgetItems] = useState({
-    flights: '',
-    accommodation: '',
-    dailyFood: '',
-    activities: '',
-    transportation: '',
-    shopping: '',
+    flights: { total: '', perPerson: '' },
+    accommodation: { total: '', perPerson: '' },
+    dailyFood: { total: '', perPerson: '' },
+    activities: { total: '', perPerson: '' },
+    transportation: { total: '', perPerson: '' },
+    shopping: { total: '', perPerson: '' },
   });
+  
+  // Track which categories are enabled
+  const [enabledCategories, setEnabledCategories] = useState(
+    budgetCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: true }), {})
+  );
+  
+  // Custom categories added by user
+  const [customCategories, setCustomCategories] = useState([]);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   
   // Timeline
   const [monthsToSave, setMonthsToSave] = useState('');
-  const [currentSavings, setCurrentSavings] = useState('');
+  const [daysToSave, setDaysToSave] = useState('');
+  const [currentSavings, setCurrentSavings] = useState({ total: '', perPerson: '' });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -276,11 +294,168 @@ export default function VacationPlannerScreen({ onBack }) {
   };
 
   const canProceedFromBudget = () => {
-    return Object.values(budgetItems).some(val => parseFloat(val) > 0);
+    return Object.values(budgetItems).some(item => 
+      parseFloat(item.total) > 0 || parseFloat(item.perPerson) > 0
+    );
+  };
+
+  // Toggle category enabled/disabled
+  const toggleCategory = (categoryId) => {
+    setEnabledCategories({
+      ...enabledCategories,
+      [categoryId]: !enabledCategories[categoryId],
+    });
+    
+    // Clear budget for disabled category
+    if (enabledCategories[categoryId]) {
+      setBudgetItems({
+        ...budgetItems,
+        [categoryId]: { total: '', perPerson: '' },
+      });
+    }
+  };
+
+  // Remove custom category
+  const removeCustomCategory = (categoryId) => {
+    setCustomCategories(customCategories.filter(cat => cat.id !== categoryId));
+    const newBudgetItems = { ...budgetItems };
+    delete newBudgetItems[categoryId];
+    setBudgetItems(newBudgetItems);
+    const newEnabledCategories = { ...enabledCategories };
+    delete newEnabledCategories[categoryId];
+    setEnabledCategories(newEnabledCategories);
+  };
+
+  // Add custom category
+  const addCustomCategory = () => {
+    if (!newCategoryName.trim()) return;
+    
+    const categoryId = `custom_${Date.now()}`;
+    const customColors = ['#06b6d4', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#3b82f6'];
+    const customIcons = ['wallet', 'gift', 'card', 'cash', 'bank', 'ticket-percent'];
+    
+    const newCategory = {
+      id: categoryId,
+      icon: customIcons[customCategories.length % customIcons.length],
+      label: newCategoryName.trim(),
+      color: customColors[customCategories.length % customColors.length],
+      isTotal: true,
+      isCustom: true,
+    };
+    
+    setCustomCategories([...customCategories, newCategory]);
+    setBudgetItems({
+      ...budgetItems,
+      [categoryId]: { total: '', perPerson: '' },
+    });
+    setEnabledCategories({
+      ...enabledCategories,
+      [categoryId]: true,
+    });
+    setNewCategoryName('');
+    setShowAddCategory(false);
+  };
+
+  // Get all categories (built-in + custom)
+  const getAllCategories = () => {
+    return [...budgetCategories, ...customCategories];
+  };
+
+  // Handle budget input changes with automatic calculation
+  const handleBudgetChange = (categoryId, field, value, category) => {
+    const numValue = parseFloat(value) || 0;
+    const trav = parseFloat(travelers) || 1;
+    const dur = parseFloat(duration) || 1;
+
+    let newTotal = '';
+    let newPerPerson = '';
+
+    if (field === 'total') {
+      newTotal = value;
+      if (numValue > 0) {
+        // Calculate per person based on total
+        if (category.perDay) {
+          // For daily expenses, divide by travelers and days
+          newPerPerson = (numValue / (trav * dur)).toFixed(2);
+        } else {
+          // For one-time expenses, divide by travelers only
+          newPerPerson = (numValue / trav).toFixed(2);
+        }
+      }
+    } else if (field === 'perPerson') {
+      newPerPerson = value;
+      if (numValue > 0) {
+        // Calculate total based on per person
+        if (category.perDay) {
+          // For daily expenses, multiply by travelers and days
+          newTotal = (numValue * trav * dur).toFixed(2);
+        } else {
+          // For one-time expenses, multiply by travelers only
+          newTotal = (numValue * trav).toFixed(2);
+        }
+      }
+    }
+
+    setBudgetItems({
+      ...budgetItems,
+      [categoryId]: {
+        total: newTotal,
+        perPerson: newPerPerson,
+      },
+    });
   };
 
   const canProceedFromTimeline = () => {
-    return monthsToSave && parseFloat(monthsToSave) > 0;
+    return (monthsToSave && parseFloat(monthsToSave) > 0) || (daysToSave && parseFloat(daysToSave) > 0);
+  };
+
+  // Handle timeline input changes
+  const handleTimelineChange = (field, value) => {
+    const numValue = parseFloat(value) || 0;
+
+    if (field === 'months') {
+      setMonthsToSave(value);
+      if (numValue > 0) {
+        // Convert months to days (approximate: 1 month = 30 days)
+        setDaysToSave((numValue * 30).toFixed(0));
+      } else {
+        setDaysToSave('');
+      }
+    } else if (field === 'days') {
+      setDaysToSave(value);
+      if (numValue > 0) {
+        // Convert days to months (approximate: 30 days = 1 month)
+        setMonthsToSave((numValue / 30).toFixed(1));
+      } else {
+        setMonthsToSave('');
+      }
+    }
+  };
+
+  // Handle current savings changes
+  const handleCurrentSavingsChange = (field, value) => {
+    const numValue = parseFloat(value) || 0;
+    const trav = parseFloat(travelers) || 1;
+
+    let newTotal = '';
+    let newPerPerson = '';
+
+    if (field === 'total') {
+      newTotal = value;
+      if (numValue > 0) {
+        newPerPerson = (numValue / trav).toFixed(2);
+      }
+    } else if (field === 'perPerson') {
+      newPerPerson = value;
+      if (numValue > 0) {
+        newTotal = (numValue * trav).toFixed(2);
+      }
+    }
+
+    setCurrentSavings({
+      total: newTotal,
+      perPerson: newPerPerson,
+    });
   };
 
   const getStepInfo = () => {
@@ -296,19 +471,37 @@ export default function VacationPlannerScreen({ onBack }) {
   const calculateBudget = () => {
     const dur = parseFloat(duration) || 1;
     const trav = parseFloat(travelers) || 1;
-    const months = parseFloat(monthsToSave) || 1;
+    // Use months if available, otherwise convert days to months
+    const months = parseFloat(monthsToSave) || (parseFloat(daysToSave) / 30) || 1;
 
-    const flights = parseFloat(budgetItems.flights) || 0;
-    const accommodation = parseFloat(budgetItems.accommodation) || 0;
-    const foodTotal = (parseFloat(budgetItems.dailyFood) || 0) * dur * trav;
-    const activities = parseFloat(budgetItems.activities) || 0;
-    const transportation = parseFloat(budgetItems.transportation) || 0;
-    const shopping = parseFloat(budgetItems.shopping) || 0;
+    // Calculate total from all enabled categories
+    let totalBudget = 0;
+    const categoryBreakdown = {};
+    
+    const allCategories = getAllCategories();
+    allCategories.forEach(category => {
+      if (enabledCategories[category.id] && budgetItems[category.id]) {
+        const categoryTotal = parseFloat(budgetItems[category.id].total) || 0;
+        categoryBreakdown[category.id] = {
+          label: category.label,
+          amount: categoryTotal,
+          color: category.color,
+        };
+        totalBudget += categoryTotal;
+      }
+    });
 
-    const totalBudget = flights + accommodation + foodTotal + activities + transportation + shopping;
+    // Get specific categories for compatibility
+    const flights = parseFloat(budgetItems.flights?.total) || 0;
+    const accommodation = parseFloat(budgetItems.accommodation?.total) || 0;
+    const foodTotal = parseFloat(budgetItems.dailyFood?.total) || 0;
+    const activities = parseFloat(budgetItems.activities?.total) || 0;
+    const transportation = parseFloat(budgetItems.transportation?.total) || 0;
+    const shopping = parseFloat(budgetItems.shopping?.total) || 0;
+
     const emergencyFund = totalBudget * 0.15; // 15% emergency buffer for vacations
     const grandTotal = totalBudget + emergencyFund;
-    const currentSaved = parseFloat(currentSavings) || 0;
+    const currentSaved = parseFloat(currentSavings.total) || 0;
     const amountNeeded = Math.max(0, grandTotal - currentSaved);
     const monthlySavings = amountNeeded / months;
 
@@ -322,6 +515,7 @@ export default function VacationPlannerScreen({ onBack }) {
       activities,
       transportation,
       shopping,
+      categoryBreakdown,
       totalBudget,
       emergencyFund,
       grandTotal,
@@ -348,32 +542,33 @@ export default function VacationPlannerScreen({ onBack }) {
   if (step === 'summary') {
     const budget = calculateBudget();
     
-    const budgetData = {
-      income: budget.grandTotal,
-      expenses: {
-        flights: budget.flights,
-        accommodation: budget.accommodation,
-        dining: budget.foodTotal,
-        activities: budget.activities,
-        transportation: budget.transportation,
-        shopping: budget.shopping,
-      },
-      savings: budget.emergencyFund,
-      remaining: budget.currentSaved,
-      vacationInfo: {
-        destination: budget.destination,
-        duration: budget.duration,
-        travelers: budget.travelers,
-        months: budget.months,
-        monthlySavings: budget.monthlySavings,
-        category: budget.category,
-      },
+    const vacationData = {
+      destination: budget.destination,
+      vacationType: budget.category?.label,
+      vacationIcon: budget.category?.icon,
+      vacationColor: budget.category?.color,
+      duration: budget.duration,
+      travelers: budget.travelers,
+      flights: budget.flights,
+      accommodation: budget.accommodation,
+      foodTotal: budget.foodTotal,
+      dailyFoodPerPerson: budgetItems.dailyFood.perPerson ? parseFloat(budgetItems.dailyFood.perPerson) : null,
+      activities: budget.activities,
+      transportation: budget.transportation,
+      shopping: budget.shopping,
+      totalBudget: budget.totalBudget,
+      emergencyFund: budget.emergencyFund,
+      grandTotal: budget.grandTotal,
+      currentSaved: budget.currentSaved,
+      amountNeeded: budget.amountNeeded,
+      monthlySavings: budget.monthlySavings,
+      monthsToSave: budget.months,
     };
 
     return (
-      <BudgetResultsScreen
-        budgetData={budgetData}
-        plannerType="vacation"
+      <VacationResultsScreen
+        vacationData={vacationData}
+        currency={currency}
         onBack={onBack}
       />
     );
@@ -396,8 +591,11 @@ export default function VacationPlannerScreen({ onBack }) {
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.categoryContainer}>
-            <Text style={styles.categoryTitle}>✈️ Plan Your Dream Trip</Text>
-            <Text style={styles.categorySubtitle}>Choose your vacation style</Text>
+            <View style={styles.titleIconContainer}>
+              <MaterialCommunityIcons name="map-marker-path" size={40} color="#06b6d4" />
+            </View>
+            <Text style={styles.categoryTitle}>Plan Your Perfect Vacation</Text>
+            <Text style={styles.categorySubtitle}>Choose your vacation style to get started</Text>
 
             <View style={styles.categoryGrid}>
               {vacationCategories.map((category) => (
@@ -612,6 +810,8 @@ export default function VacationPlannerScreen({ onBack }) {
 
   // Budget Step
   if (step === 'budget') {
+    const allCategories = getAllCategories();
+    
     return (
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
@@ -629,35 +829,139 @@ export default function VacationPlannerScreen({ onBack }) {
               </View>
 
               <Text style={styles.sectionSubtitle}>
-                Estimate your costs for each category
+                Estimate your costs for each category. Tap the eye icon to hide categories you don't need.
               </Text>
 
-              {budgetCategories.map((category) => (
-                <View key={category.id} style={styles.budgetItemCard}>
-                  <View style={styles.budgetItemHeader}>
-                    <View style={[styles.budgetItemIcon, { backgroundColor: `${category.color}20` }]}>
-                      <MaterialCommunityIcons name={category.icon} size={24} color={category.color} />
+              {allCategories.map((category) => {
+                const isEnabled = enabledCategories[category.id];
+                
+                return (
+                  <View key={category.id} style={[
+                    styles.budgetItemCardExpanded,
+                    !isEnabled && styles.budgetItemDisabled
+                  ]}>
+                    <View style={styles.budgetItemHeaderRow}>
+                      <View style={[styles.budgetItemIcon, { backgroundColor: `${category.color}20` }]}>
+                        <MaterialCommunityIcons name={category.icon} size={24} color={category.color} />
+                      </View>
+                      <View style={styles.budgetItemInfo}>
+                        <Text style={styles.budgetItemLabel}>{category.label}</Text>
+                        {category.perDay && (
+                          <Text style={styles.budgetItemHint}>Daily expense</Text>
+                        )}
+                        {category.isTotal && (
+                          <Text style={styles.budgetItemHint}>In total</Text>
+                        )}
+                      </View>
+                      <View style={styles.budgetItemActions}>
+                        {category.isCustom ? (
+                          <TouchableOpacity
+                            onPress={() => removeCustomCategory(category.id)}
+                            style={styles.removeButton}
+                          >
+                            <MaterialCommunityIcons name="delete" size={20} color="#ef4444" />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            onPress={() => toggleCategory(category.id)}
+                            style={styles.toggleButton}
+                          >
+                            <MaterialCommunityIcons 
+                              name={isEnabled ? "eye" : "eye-off"} 
+                              size={20} 
+                              color={isEnabled ? selectedCategory?.color : "#64748b"} 
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                    <View style={styles.budgetItemInfo}>
-                      <Text style={styles.budgetItemLabel}>{category.label}</Text>
-                      {category.perPerson && category.perDay && (
-                        <Text style={styles.budgetItemHint}>Per person, per day</Text>
-                      )}
-                    </View>
+                    
+                    {isEnabled && (
+                      <View style={styles.dualInputRow}>
+                        <View style={styles.dualInputContainer}>
+                          <Text style={styles.dualInputLabel}>Per Person</Text>
+                          <View style={styles.budgetInputContainer}>
+                            <Text style={styles.currencySymbol}>{currency}</Text>
+                            <TextInput
+                              style={styles.budgetInput}
+                              placeholder="0"
+                              placeholderTextColor="#64748b"
+                              value={budgetItems[category.id]?.perPerson || ''}
+                              onChangeText={(value) => handleBudgetChange(category.id, 'perPerson', value, category)}
+                              keyboardType="numeric"
+                            />
+                          </View>
+                        </View>
+
+                        <View style={styles.dualInputSeparator}>
+                          <MaterialCommunityIcons name="swap-horizontal" size={20} color="#64748b" />
+                        </View>
+
+                        <View style={styles.dualInputContainer}>
+                          <Text style={styles.dualInputLabel}>Total</Text>
+                          <View style={styles.budgetInputContainer}>
+                            <Text style={styles.currencySymbol}>{currency}</Text>
+                            <TextInput
+                              style={styles.budgetInput}
+                              placeholder="0"
+                              placeholderTextColor="#64748b"
+                              value={budgetItems[category.id]?.total || ''}
+                              onChangeText={(value) => handleBudgetChange(category.id, 'total', value, category)}
+                              keyboardType="numeric"
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.budgetInputContainer}>
-                    <Text style={styles.currencySymbol}>{currency}</Text>
+                );
+              })}
+
+              {/* Add Custom Category Button */}
+              {!showAddCategory ? (
+                <TouchableOpacity
+                  style={styles.addCategoryButton}
+                  onPress={() => setShowAddCategory(true)}
+                >
+                  <MaterialCommunityIcons name="plus-circle" size={24} color={selectedCategory?.color} />
+                  <Text style={[styles.addCategoryText, { color: selectedCategory?.color }]}>
+                    Add Custom Category
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.addCategoryCard}>
+                  <Text style={styles.addCategoryCardTitle}>New Category</Text>
+                  <View style={styles.addCategoryInputRow}>
                     <TextInput
-                      style={styles.budgetInput}
-                      placeholder="0"
+                      style={styles.addCategoryInput}
+                      placeholder="Category name (e.g., Parking, Visa fees)"
                       placeholderTextColor="#64748b"
-                      value={budgetItems[category.id]}
-                      onChangeText={(value) => setBudgetItems({ ...budgetItems, [category.id]: value })}
-                      keyboardType="numeric"
+                      value={newCategoryName}
+                      onChangeText={setNewCategoryName}
+                      autoFocus
                     />
                   </View>
+                  <View style={styles.addCategoryButtons}>
+                    <TouchableOpacity
+                      style={styles.cancelCategoryButton}
+                      onPress={() => {
+                        setShowAddCategory(false);
+                        setNewCategoryName('');
+                      }}
+                    >
+                      <Text style={styles.cancelCategoryText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.saveCategoryButton, { backgroundColor: selectedCategory?.color }]}
+                      onPress={addCustomCategory}
+                      disabled={!newCategoryName.trim()}
+                    >
+                      <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                      <Text style={styles.saveCategoryText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              ))}
+              )}
 
               <View style={styles.infoCard}>
                 <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
@@ -705,44 +1009,95 @@ export default function VacationPlannerScreen({ onBack }) {
                 When's the big trip? Let's create your savings plan
               </Text>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Months Until Trip</Text>
-                <View style={styles.inputWithIcon}>
-                  <MaterialCommunityIcons name="calendar-range" size={20} color={selectedCategory?.color} />
-                  <TextInput
-                    style={styles.iconInput}
-                    placeholder="How many months?"
-                    placeholderTextColor="#64748b"
-                    value={monthsToSave}
-                    onChangeText={setMonthsToSave}
-                    keyboardType="numeric"
-                  />
-                  <Text style={styles.unitLabel}>months</Text>
+              <View style={styles.timelineInputCard}>
+                <Text style={styles.cardTitle}>Time Until Trip</Text>
+                
+                <View style={styles.dualInputRow}>
+                  <View style={styles.dualInputContainer}>
+                    <Text style={styles.dualInputLabel}>Months</Text>
+                    <View style={styles.inputWithIcon}>
+                      <MaterialCommunityIcons name="calendar-range" size={20} color={selectedCategory?.color} />
+                      <TextInput
+                        style={styles.iconInput}
+                        placeholder="0"
+                        placeholderTextColor="#64748b"
+                        value={monthsToSave}
+                        onChangeText={(value) => handleTimelineChange('months', value)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.dualInputSeparator}>
+                    <MaterialCommunityIcons name="swap-horizontal" size={20} color="#64748b" />
+                  </View>
+
+                  <View style={styles.dualInputContainer}>
+                    <Text style={styles.dualInputLabel}>Days</Text>
+                    <View style={styles.inputWithIcon}>
+                      <MaterialCommunityIcons name="calendar" size={20} color={selectedCategory?.color} />
+                      <TextInput
+                        style={styles.iconInput}
+                        placeholder="0"
+                        placeholderTextColor="#64748b"
+                        value={daysToSave}
+                        onChangeText={(value) => handleTimelineChange('days', value)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Current Savings (Optional)</Text>
-                <View style={styles.inputWithIcon}>
-                  <Text style={styles.currencySymbol}>{currency}</Text>
-                  <TextInput
-                    style={styles.iconInput}
-                    placeholder="Already saved?"
-                    placeholderTextColor="#64748b"
-                    value={currentSavings}
-                    onChangeText={setCurrentSavings}
-                    keyboardType="numeric"
-                  />
-                </View>
-                <Text style={styles.hintText}>
-                  Enter any money you've already saved for this trip
+              <View style={styles.timelineInputCard}>
+                <Text style={styles.cardTitle}>Current Savings (Optional)</Text>
+                <Text style={styles.cardSubtitle}>
+                  Money you've already saved for this trip
                 </Text>
+                
+                <View style={styles.dualInputRow}>
+                  <View style={styles.dualInputContainer}>
+                    <Text style={styles.dualInputLabel}>Per Person</Text>
+                    <View style={styles.inputWithIcon}>
+                      <Text style={styles.currencySymbol}>{currency}</Text>
+                      <TextInput
+                        style={styles.iconInput}
+                        placeholder="0"
+                        placeholderTextColor="#64748b"
+                        value={currentSavings.perPerson}
+                        onChangeText={(value) => handleCurrentSavingsChange('perPerson', value)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.dualInputSeparator}>
+                    <MaterialCommunityIcons name="swap-horizontal" size={20} color="#64748b" />
+                  </View>
+
+                  <View style={styles.dualInputContainer}>
+                    <Text style={styles.dualInputLabel}>Total</Text>
+                    <View style={styles.inputWithIcon}>
+                      <Text style={styles.currencySymbol}>{currency}</Text>
+                      <TextInput
+                        style={styles.iconInput}
+                        placeholder="0"
+                        placeholderTextColor="#64748b"
+                        value={currentSavings.total}
+                        onChangeText={(value) => handleCurrentSavingsChange('total', value)}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
               </View>
 
               <View style={styles.timelineVisualization}>
                 <MaterialCommunityIcons name="beach" size={48} color={selectedCategory?.color} />
                 <Text style={styles.timelineText}>
-                  {monthsToSave ? `${monthsToSave} months until your ${selectedCategory?.label.toLowerCase()}!` : 'Set your timeline above'}
+                  {monthsToSave || daysToSave 
+                    ? `${monthsToSave ? Math.round(parseFloat(monthsToSave)) + ' months' : ''} ${monthsToSave && daysToSave ? '(' + Math.round(parseFloat(daysToSave)) + ' days)' : daysToSave ? Math.round(parseFloat(daysToSave)) + ' days' : ''} until your ${selectedCategory?.label.toLowerCase()}!` 
+                    : 'Set your timeline above'}
                 </Text>
               </View>
             </View>
@@ -871,6 +1226,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 30,
     paddingBottom: 20,
+  },
+  titleIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   categoryTitle: {
     fontSize: 32,
@@ -1104,6 +1463,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  budgetItemCardExpanded: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  budgetItemDisabled: {
+    opacity: 0.5,
+  },
+  budgetItemHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
   budgetItemHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1130,6 +1506,119 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 2,
   },
+  budgetItemActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  toggleButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  removeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  addCategoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#334155',
+    gap: 10,
+  },
+  addCategoryText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  addCategoryCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  addCategoryCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 12,
+  },
+  addCategoryInputRow: {
+    marginBottom: 16,
+  },
+  addCategoryInput: {
+    backgroundColor: '#0f172a',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  addCategoryButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelCategoryButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  cancelCategoryText: {
+    color: '#94a3b8',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  saveCategoryButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  saveCategoryText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dualInputContainer: {
+    flex: 1,
+  },
+  dualInputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dualInputSeparator: {
+    paddingTop: 20,
+    paddingHorizontal: 4,
+  },
   budgetInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1139,7 +1628,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#334155',
-    minWidth: 100,
+    flex: 1,
   },
   currencySymbol: {
     fontSize: 16,
@@ -1151,7 +1640,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#f1f5f9',
     fontWeight: '600',
-    minWidth: 60,
+    flex: 1,
   },
 
   // Info Card
@@ -1189,6 +1678,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontWeight: '600',
+  },
+  timelineInputCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginBottom: 8,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginBottom: 16,
   },
 
   // Buttons
