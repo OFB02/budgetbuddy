@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Animated,
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -18,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SankeyDiagram from './SankeyDiagram';
 import CircleDiagrams from './CircleDiagrams';
+import { useMonetization } from '../monetization/MonetizationContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STORAGE_KEY = '@budgetbuddy_saved_budgets';
@@ -28,6 +30,38 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
   const [isExporting, setIsExporting] = useState(false);
   const [showCircleDiagrams, setShowCircleDiagrams] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Monetization hook
+  const { handleExport, exportCredits, isPremium } = useMonetization();
+
+  // Handle smooth chart transition with sliding
+  const handleChartToggle = (showDonut) => {
+    // Determine slide direction
+    // If going to donut (true), slide from right to left (positive to 0)
+    // If going to flow (false), slide from left to right (negative to 0)
+    const fromValue = showDonut ? SCREEN_WIDTH : -SCREEN_WIDTH;
+    
+    // First slide out current chart
+    Animated.timing(slideAnim, {
+      toValue: showDonut ? -SCREEN_WIDTH : SCREEN_WIDTH,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      // Switch the chart
+      setShowCircleDiagrams(showDonut);
+      
+      // Reset position to opposite side
+      slideAnim.setValue(fromValue);
+      
+      // Slide in new chart
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   const renderTitle = () => {
     const titles = {
@@ -59,9 +93,22 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <View style={styles.goalProgressBar}>
             <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
           </View>
-          <Text style={styles.goalProgressText}>
-            {currency}{(current || 0).toLocaleString()} of {currency}{(target || 0).toLocaleString()} ({progress.toFixed(1)}%)
-          </Text>
+          <View style={styles.goalProgressTextContainer}>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.goalProgressText}>
+                {(current || 0).toLocaleString()}
+              </Text>
+            </View>
+            <Text style={styles.goalProgressText}> of </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.goalProgressText}>
+                {(target || 0).toLocaleString()}
+              </Text>
+            </View>
+            <Text style={styles.goalProgressText}> ({progress.toFixed(1)}%)</Text>
+          </View>
           <View style={styles.plannerInfoDetailRow}>
             <MaterialCommunityIcons 
               name={isAchievable ? 'check-circle' : 'alert-circle'} 
@@ -90,9 +137,14 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           </Text>
           <View style={styles.savingsGoalRow}>
             <MaterialCommunityIcons name="piggy-bank" size={20} color="#2ecc71" />
-            <Text style={styles.savingsGoalText}>
-              Save {currency}{(monthlySavings || 0).toLocaleString()}/month for {months || 0} months
-            </Text>
+            <Text style={styles.savingsGoalText}>Save </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.savingsGoalText}>
+                {(monthlySavings || 0).toLocaleString()}
+              </Text>
+            </View>
+            <Text style={styles.savingsGoalText}>/month for {months || 0} months</Text>
           </View>
         </View>
       );
@@ -137,26 +189,38 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <View style={styles.statBox}>
             <MaterialCommunityIcons name="cash" size={32} color="#2ecc71" style={styles.statIcon} />
             <Text style={styles.statLabel}>Income</Text>
-            <Text style={styles.statValue}>{currency}{income.toLocaleString()}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.statValue}>{income.toLocaleString()}</Text>
+            </View>
           </View>
           <View style={styles.statBox}>
             <MaterialCommunityIcons name="credit-card-outline" size={32} color="#e74c3c" style={styles.statIcon} />
             <Text style={styles.statLabel}>Expenses</Text>
-            <Text style={styles.statValue}>{currency}{totalExpenses.toLocaleString()}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.statValue}>{totalExpenses.toLocaleString()}</Text>
+            </View>
             <Text style={styles.statPercent}>{expenseRate}%</Text>
           </View>
           <View style={styles.statBox}>
             <MaterialCommunityIcons name="piggy-bank" size={32} color="#4a69bd" style={styles.statIcon} />
             <Text style={styles.statLabel}>Savings</Text>
-            <Text style={styles.statValue}>{currency}{savings.toLocaleString()}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.statValue}>{savings.toLocaleString()}</Text>
+            </View>
             <Text style={styles.statPercent}>{savingsRate}%</Text>
           </View>
           <View style={styles.statBox}>
             <MaterialCommunityIcons name="wallet" size={32} color="#f39c12" style={styles.statIcon} />
             <Text style={styles.statLabel}>Remaining</Text>
-            <Text style={[styles.statValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
-              {currency}{remaining.toLocaleString()}
-            </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={[styles.statValue, { color: remaining >= 0 ? '#2ecc71' : '#e74c3c' }]}>
+                {remaining.toLocaleString()}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -165,38 +229,43 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
 
   // Export Image
   const handleExportImage = async () => {
-    try {
-      setIsExporting(true);
-      
-      // Use exportRef which captures the full non-scrollable diagram
-      const refToCapture = exportRef.current ? exportRef : diagramRef;
-      
-      const uri = await captureRef(refToCapture, {
-        format: 'png',
-        quality: 1,
-        result: 'tmpfile',
-        // Let it capture the natural size of the content
-      });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Save your Budget Flow',
+    // Wrap the actual export logic in handleExport from monetization
+    handleExport(async () => {
+      try {
+        setIsExporting(true);
+        
+        // Use exportRef which captures the full non-scrollable diagram
+        const refToCapture = exportRef.current ? exportRef : diagramRef;
+        
+        const uri = await captureRef(refToCapture, {
+          format: 'png',
+          quality: 1,
+          result: 'tmpfile',
+          // Let it capture the natural size of the content
         });
-      } else {
-        Alert.alert('Success', 'Image saved successfully!');
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: 'Save your Budget Flow',
+          });
+        } else {
+          Alert.alert('Success', 'Image saved successfully!');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to export image: ' + error.message);
+      } finally {
+        setIsExporting(false);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to export image: ' + error.message);
-    } finally {
-      setIsExporting(false);
-    }
+    });
   };
 
   // Export to CSV (Excel-compatible)
   const handleExportToExcel = async () => {
-    try {
-      setIsExporting(true);
+    // Wrap the actual export logic in handleExport from monetization
+    handleExport(async () => {
+      try {
+        setIsExporting(true);
       const { income = 0, expenses = {}, savings = 0, remaining = 0 } = budgetData || {};
       
       // Create beautifully formatted CSV content
@@ -325,6 +394,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
     } finally {
       setIsExporting(false);
     }
+    }); // Close handleExport callback
   };
 
   // Save Budget
@@ -408,11 +478,27 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{renderTitle()}</Text>
-        <View style={styles.placeholder} />
+        
+        {/* Monetization Status Badge */}
+        <View style={styles.statusBadge}>
+          {isPremium ? (
+            <View style={styles.premiumBadge}>
+              <MaterialCommunityIcons name="star" size={14} color="#FFD700" />
+              <Text style={styles.premiumText}>Premium</Text>
+            </View>
+          ) : (
+            <View style={styles.creditsBadge}>
+              <MaterialCommunityIcons name="ticket" size={14} color="#4CAF50" />
+              <Text style={styles.creditsText}>{exportCredits}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.subtitle}>Your Financial Flow Visualization</Text>
+        <Text style={styles.subtitle}>
+          {showCircleDiagrams ? 'Your Financial Donut Visualization' : 'Your Financial Flow Visualization'}
+        </Text>
 
         {/* Planner-specific info */}
         {renderPlannerSpecificInfo()}
@@ -422,7 +508,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           <View style={styles.toggleTabsContainer}>
             <TouchableOpacity 
               style={[styles.toggleTab, !showCircleDiagrams && styles.toggleTabActive]}
-              onPress={() => setShowCircleDiagrams(false)}
+              onPress={() => handleChartToggle(false)}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons 
@@ -437,7 +523,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
             
             <TouchableOpacity 
               style={[styles.toggleTab, showCircleDiagrams && styles.toggleTabActive]}
-              onPress={() => setShowCircleDiagrams(true)}
+              onPress={() => handleChartToggle(true)}
               activeOpacity={0.8}
             >
               <MaterialCommunityIcons 
@@ -453,7 +539,16 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
         </View>
 
         {/* Diagram Container */}
-        <View style={styles.diagramContainer} ref={diagramRef} collapsable={false}>
+        <Animated.View 
+          style={[
+            styles.diagramContainer, 
+            { 
+              transform: [{ translateX: slideAnim }]
+            }
+          ]} 
+          ref={diagramRef} 
+          collapsable={false}
+        >
           {showCircleDiagrams ? (
             <CircleDiagrams budgetData={budgetData} currency={currency} />
           ) : (
@@ -465,10 +560,17 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
               ? '� View your income vs expenses distribution at a glance'
               : '👈 Swipe left/right to explore the full diagram'}
           </Text>
-        </View>
+        </Animated.View>
 
         {/* Export Buttons */}
-        <View style={styles.exportContainer}>
+        <Animated.View 
+          style={[
+            styles.exportContainer,
+            { 
+              transform: [{ translateX: slideAnim }]
+            }
+          ]}
+        >
           <View style={styles.exportTitleRow}>
             <MaterialCommunityIcons name="export" size={20} color="#fff" />
             <Text style={styles.exportTitle}> Export Options</Text>
@@ -504,7 +606,7 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
 
         {/* Save Budget Button */}
         <TouchableOpacity 
@@ -579,7 +681,9 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
       >
         <View style={styles.exportHeader}>
           <Text style={styles.exportHeaderTitle}>{renderTitle()}</Text>
-          <Text style={styles.exportHeaderSubtitle}>Budget Flow Visualization</Text>
+          <Text style={styles.exportHeaderSubtitle}>
+            {showCircleDiagrams ? 'Budget Donut Visualization' : 'Budget Flow Visualization'}
+          </Text>
         </View>
         <View style={styles.exportDiagramWrapper}>
           {showCircleDiagrams ? (
@@ -622,6 +726,54 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  statusBadge: {
+    minWidth: 44,
+    alignItems: 'flex-end',
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(42, 42, 62, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  premiumText: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  creditsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(42, 42, 62, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  creditsText: {
+    color: '#4CAF50',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   placeholder: {
     width: 44,
@@ -681,6 +833,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     marginBottom: 20,
     minHeight: 300,
+    overflow: 'hidden',
   },
   toggleButton: {
     backgroundColor: '#4a69bd',
@@ -868,6 +1021,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
+    overflow: 'hidden',
   },
   exportTitleRow: {
     flexDirection: 'row',
@@ -970,5 +1124,22 @@ const styles = StyleSheet.create({
   exportFooterText: {
     fontSize: 14,
     color: '#888',
+  },
+  amountWithCurrency: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  currencySymbolSubtle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  goalProgressTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
   },
 });

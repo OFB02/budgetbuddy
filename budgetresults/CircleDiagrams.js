@@ -117,7 +117,10 @@ export default function CircleDiagrams({ budgetData, currency = '$' }) {
           <MaterialCommunityIcons name="cash-multiple" size={36} color="#6c5ce7" />
           <View style={styles.chartHeaderText}>
             <Text style={styles.chartTitle}>Income Sources</Text>
-            <Text style={styles.chartSubtitle}>{currency}{totalIncome.toLocaleString()} total</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.chartSubtitle}>{totalIncome.toLocaleString()} total</Text>
+            </View>
           </View>
         </View>
         
@@ -148,7 +151,10 @@ export default function CircleDiagrams({ budgetData, currency = '$' }) {
           <MaterialCommunityIcons name="chart-pie" size={36} color="#ff7675" />
           <View style={styles.chartHeaderText}>
             <Text style={styles.chartTitle}>Spending Breakdown</Text>
-            <Text style={styles.chartSubtitle}>{currency}{(totalExpenses + savings).toLocaleString()} allocated</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.chartSubtitle}>{(totalExpenses + savings).toLocaleString()} allocated</Text>
+            </View>
           </View>
         </View>
         
@@ -286,7 +292,10 @@ function LegendItem({ item, total, currency, isSpecial }) {
         )}
       </View>
       <View style={styles.legendRight}>
-        <Text style={styles.legendAmount}>{currency}{item.value.toLocaleString()}</Text>
+        <View style={styles.amountWithCurrency}>
+          <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+          <Text style={styles.legendAmount}>{item.value.toLocaleString()}</Text>
+        </View>
         <View style={[styles.percentBadge, { backgroundColor: item.color + '25' }]}>
           <Text style={[styles.percentText, { color: item.color }]}>{percentage}%</Text>
         </View>
@@ -423,7 +432,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     marginRight: 10,
-    minWidth: 70,
     textAlign: 'right',
   },
   percentBadge: {
@@ -436,5 +444,16 @@ const styles = StyleSheet.create({
   percentText: {
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  amountWithCurrency: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 1,
+  },
+  currencySymbolSubtle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    opacity: 0.7,
   },
 });

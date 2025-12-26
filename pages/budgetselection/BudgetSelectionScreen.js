@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import IntroPaywallModal from '../../monetization/IntroPaywallModal';
+import { useMonetization } from '../../monetization/MonetizationContext';
+
+const INTRO_SHOWN_KEY = '@budgetbuddy_intro_shown';
 
 const BudgetOption = ({ iconName, title, description, onPress, color }) => (
   <TouchableOpacity
@@ -26,14 +31,73 @@ const BudgetOption = ({ iconName, title, description, onPress, color }) => (
 );
 
 export default function BudgetSelectionScreen({ onSelectOption }) {
+  const [showIntroPaywall, setShowIntroPaywall] = useState(false);
+  const { isPremium, resetToFreeTier } = useMonetization();
+
+  // Check if we should show the intro paywall
+  useEffect(() => {
+    checkAndShowIntro();
+  }, []);
+
+  const checkAndShowIntro = async () => {
+    try {
+      console.log('Checking intro paywall status...');
+      
+      // Don't show if already premium
+      if (isPremium) {
+        console.log('User is premium, skipping intro');
+        return;
+      }
+
+      // Show intro every time for non-premium users
+      console.log('Showing intro paywall in 800ms...');
+      setTimeout(() => {
+        console.log('Displaying intro paywall now!');
+        setShowIntroPaywall(true);
+      }, 800);
+    } catch (error) {
+      console.error('Error checking intro status:', error);
+    }
+  };
+
+  const handleCloseIntro = async () => {
+    try {
+      // Mark intro as shown
+      await AsyncStorage.setItem(INTRO_SHOWN_KEY, 'true');
+      setShowIntroPaywall(false);
+    } catch (error) {
+      console.error('Error saving intro status:', error);
+      setShowIntroPaywall(false);
+    }
+  };
+
   const handleOptionPress = (option) => {
     if (onSelectOption) {
       onSelectOption(option);
     }
   };
 
+  // Dev function to reset premium status
+  const handleResetPremium = async () => {
+    try {
+      await resetToFreeTier();
+      console.log('Premium status reset to free tier!');
+      alert('Premium status removed. Restart the app to see changes.');
+    } catch (error) {
+      console.error('Error resetting premium:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Premium Badge - Top Right */}
+      {isPremium && (
+        <View style={styles.premiumBadgeContainer}>
+          <MaterialCommunityIcons name="crown" size={14} color="#FFD700" />
+          <Text style={styles.premiumBadgeText}>Premium</Text>
+        </View>
+      )}
+
       <View style={styles.header}>
         <View style={styles.headerIconContainer}>
           <MaterialCommunityIcons name="wallet" size={40} color="#4a69bd" />
@@ -80,6 +144,24 @@ export default function BudgetSelectionScreen({ onSelectOption }) {
         <MaterialCommunityIcons name="information" size={16} color="#666" />
         <Text style={styles.footerText}> Select an option to get started</Text>
       </View>
+
+      {/* Dev: Reset Premium Button */}
+      {isPremium && (
+        <TouchableOpacity 
+          style={styles.devResetButton}
+          onPress={handleResetPremium}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="crown-off" size={16} color="#FF5252" />
+          <Text style={styles.devResetText}>Reset Premium (Dev)</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Intro Paywall Modal */}
+      <IntroPaywallModal 
+        visible={showIntroPaywall}
+        onClose={handleCloseIntro}
+      />
     </SafeAreaView>
   );
 }
@@ -118,6 +200,32 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#888',
+  },
+  premiumBadgeContainer: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(35, 35, 64, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 100,
+  },
+  premiumBadgeText: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   optionsContainer: {
     flex: 1,
@@ -168,5 +276,24 @@ const styles = StyleSheet.create({
   footerText: {
     color: '#666',
     fontSize: 14,
+  },
+  devResetButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#232340',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#FF5252',
+  },
+  devResetText: {
+    color: '#FF5252',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

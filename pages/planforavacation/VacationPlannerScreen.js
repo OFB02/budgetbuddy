@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import VacationResultsScreen from '../../budgetresults/VacationResultsScreen';
 
 const vacationCategories = [
@@ -134,12 +135,12 @@ const currencies = [
 ];
 
 const budgetCategories = [
-  { id: 'flights', icon: 'airplane', label: 'Flights', color: '#3b82f6', isTotal: true },
-  { id: 'accommodation', icon: 'bed', label: 'Accommodation', color: '#ec4899', isTotal: true },
-  { id: 'dailyFood', icon: 'food', label: 'Food per Day', color: '#f59e0b', perDay: true },
-  { id: 'activities', icon: 'ticket', label: 'Activities & Tours', color: '#8b5cf6', isTotal: true },
-  { id: 'transportation', icon: 'car', label: 'Local Transport', color: '#10b981', isTotal: true },
-  { id: 'shopping', icon: 'shopping', label: 'Shopping', color: '#06b6d4', isTotal: true },
+  { id: 'flights', icon: 'airplane', label: 'Flights', color: '#3b82f6', isTotal: true, allowToggle: false },
+  { id: 'accommodation', icon: 'bed', label: 'Accommodation', color: '#ec4899', isTotal: true, allowToggle: true },
+  { id: 'dailyFood', icon: 'food', label: 'Food', color: '#f59e0b', perDay: true, allowToggle: true },
+  { id: 'activities', icon: 'ticket', label: 'Activities & Tours', color: '#8b5cf6', isTotal: true, allowToggle: true },
+  { id: 'transportation', icon: 'car', label: 'Local Transport', color: '#10b981', isTotal: true, allowToggle: true },
+  { id: 'shopping', icon: 'shopping', label: 'Shopping', color: '#06b6d4', isTotal: true, allowToggle: true },
 ];
 
 const questions = [
@@ -252,6 +253,14 @@ export default function VacationPlannerScreen({ onBack }) {
     budgetCategories.reduce((acc, cat) => ({ ...acc, [cat.id]: true }), {})
   );
   
+  // Track whether each category is daily or total - default to daily for all
+  const [categoryTimePeriod, setCategoryTimePeriod] = useState(
+    budgetCategories.reduce((acc, cat) => ({ 
+      ...acc, 
+      [cat.id]: 'daily' // Start with daily as default for all categories
+    }), {})
+  );
+  
   // Custom categories added by user
   const [customCategories, setCustomCategories] = useState([]);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -261,6 +270,8 @@ export default function VacationPlannerScreen({ onBack }) {
   const [monthsToSave, setMonthsToSave] = useState('');
   const [daysToSave, setDaysToSave] = useState('');
   const [currentSavings, setCurrentSavings] = useState({ total: '', perPerson: '' });
+  const [tripDate, setTripDate] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -341,6 +352,7 @@ export default function VacationPlannerScreen({ onBack }) {
       color: customColors[customCategories.length % customColors.length],
       isTotal: true,
       isCustom: true,
+      allowToggle: true,
     };
     
     setCustomCategories([...customCategories, newCategory]);
@@ -352,6 +364,10 @@ export default function VacationPlannerScreen({ onBack }) {
       ...enabledCategories,
       [categoryId]: true,
     });
+    setCategoryTimePeriod({
+      ...categoryTimePeriod,
+      [categoryId]: 'total',
+    });
     setNewCategoryName('');
     setShowAddCategory(false);
   };
@@ -361,11 +377,29 @@ export default function VacationPlannerScreen({ onBack }) {
     return [...budgetCategories, ...customCategories];
   };
 
+  // Toggle time period (daily vs total)
+  const toggleTimePeriod = (categoryId) => {
+    const currentPeriod = categoryTimePeriod[categoryId];
+    const newPeriod = currentPeriod === 'daily' ? 'total' : 'daily';
+    
+    setCategoryTimePeriod({
+      ...categoryTimePeriod,
+      [categoryId]: newPeriod,
+    });
+    
+    // Clear the budget values when switching
+    setBudgetItems({
+      ...budgetItems,
+      [categoryId]: { total: '', perPerson: '' },
+    });
+  };
+
   // Handle budget input changes with automatic calculation
   const handleBudgetChange = (categoryId, field, value, category) => {
     const numValue = parseFloat(value) || 0;
     const trav = parseFloat(travelers) || 1;
     const dur = parseFloat(duration) || 1;
+    const isDaily = categoryTimePeriod[categoryId] === 'daily';
 
     let newTotal = '';
     let newPerPerson = '';
@@ -374,7 +408,7 @@ export default function VacationPlannerScreen({ onBack }) {
       newTotal = value;
       if (numValue > 0) {
         // Calculate per person based on total
-        if (category.perDay) {
+        if (isDaily) {
           // For daily expenses, divide by travelers and days
           newPerPerson = (numValue / (trav * dur)).toFixed(2);
         } else {
@@ -386,7 +420,7 @@ export default function VacationPlannerScreen({ onBack }) {
       newPerPerson = value;
       if (numValue > 0) {
         // Calculate total based on per person
-        if (category.perDay) {
+        if (isDaily) {
           // For daily expenses, multiply by travelers and days
           newTotal = (numValue * trav * dur).toFixed(2);
         } else {
@@ -409,9 +443,42 @@ export default function VacationPlannerScreen({ onBack }) {
     return (monthsToSave && parseFloat(monthsToSave) > 0) || (daysToSave && parseFloat(daysToSave) > 0);
   };
 
+  // Calculate time difference from date
+  const calculateTimeFromDate = (selectedDate) => {
+    const today = new Date();
+    const tripDateTime = new Date(selectedDate);
+    
+    // Reset time to midnight for accurate day calculation
+    today.setHours(0, 0, 0, 0);
+    tripDateTime.setHours(0, 0, 0, 0);
+    
+    const diffTime = tripDateTime - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMonths = (diffDays / 30).toFixed(1);
+    
+    return { days: Math.max(0, diffDays), months: Math.max(0, parseFloat(diffMonths)) };
+  };
+
+  // Handle date selection from calendar
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    
+    if (selectedDate && event.type !== 'dismissed') {
+      setTripDate(selectedDate);
+      const { days, months } = calculateTimeFromDate(selectedDate);
+      setDaysToSave(days.toString());
+      setMonthsToSave(months.toString());
+    }
+  };
+
   // Handle timeline input changes
   const handleTimelineChange = (field, value) => {
     const numValue = parseFloat(value) || 0;
+
+    // Clear trip date when manually editing
+    setTripDate(null);
 
     if (field === 'months') {
       setMonthsToSave(value);
@@ -829,11 +896,12 @@ export default function VacationPlannerScreen({ onBack }) {
               </View>
 
               <Text style={styles.sectionSubtitle}>
-                Estimate your costs for each category. Tap the eye icon to hide categories you don't need.
+                Estimate your costs for each category. Use the calendar icon to toggle between daily and total costs. Tap the eye icon to hide categories you don't need.
               </Text>
 
               {allCategories.map((category) => {
                 const isEnabled = enabledCategories[category.id];
+                const isDaily = categoryTimePeriod[category.id] === 'daily';
                 
                 return (
                   <View key={category.id} style={[
@@ -846,14 +914,23 @@ export default function VacationPlannerScreen({ onBack }) {
                       </View>
                       <View style={styles.budgetItemInfo}>
                         <Text style={styles.budgetItemLabel}>{category.label}</Text>
-                        {category.perDay && (
-                          <Text style={styles.budgetItemHint}>Daily expense</Text>
-                        )}
-                        {category.isTotal && (
-                          <Text style={styles.budgetItemHint}>In total</Text>
-                        )}
+                        <Text style={styles.budgetItemHint}>
+                          {isDaily ? 'Per day' : 'Total cost'}
+                        </Text>
                       </View>
                       <View style={styles.budgetItemActions}>
+                        {category.allowToggle && isEnabled && (
+                          <TouchableOpacity
+                            onPress={() => toggleTimePeriod(category.id)}
+                            style={styles.toggleButton}
+                          >
+                            <MaterialCommunityIcons 
+                              name={isDaily ? "calendar-today" : "calendar-range"} 
+                              size={20} 
+                              color={selectedCategory?.color} 
+                            />
+                          </TouchableOpacity>
+                        )}
                         {category.isCustom ? (
                           <TouchableOpacity
                             onPress={() => removeCustomCategory(category.id)}
@@ -879,7 +956,9 @@ export default function VacationPlannerScreen({ onBack }) {
                     {isEnabled && (
                       <View style={styles.dualInputRow}>
                         <View style={styles.dualInputContainer}>
-                          <Text style={styles.dualInputLabel}>Per Person</Text>
+                          <Text style={styles.dualInputLabel}>
+                            {isDaily ? 'Per Person/Day' : 'Per Person'}
+                          </Text>
                           <View style={styles.budgetInputContainer}>
                             <Text style={styles.currencySymbol}>{currency}</Text>
                             <TextInput
@@ -898,7 +977,9 @@ export default function VacationPlannerScreen({ onBack }) {
                         </View>
 
                         <View style={styles.dualInputContainer}>
-                          <Text style={styles.dualInputLabel}>Total</Text>
+                          <Text style={styles.dualInputLabel}>
+                            {isDaily ? 'Total/Day' : 'Total'}
+                          </Text>
                           <View style={styles.budgetInputContainer}>
                             <Text style={styles.currencySymbol}>{currency}</Text>
                             <TextInput
@@ -1010,7 +1091,73 @@ export default function VacationPlannerScreen({ onBack }) {
               </Text>
 
               <View style={styles.timelineInputCard}>
-                <Text style={styles.cardTitle}>Time Until Trip</Text>
+                <Text style={styles.cardTitle}>Select Trip Date</Text>
+                <Text style={styles.cardSubtitle}>
+                  Pick your departure date from the calendar
+                </Text>
+                
+                <TouchableOpacity
+                  style={[styles.datePickerButton, { borderColor: selectedCategory?.color }]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <MaterialCommunityIcons name="calendar-month" size={24} color={selectedCategory?.color} />
+                  <View style={styles.datePickerButtonContent}>
+                    <Text style={styles.datePickerLabel}>Trip Date</Text>
+                    <Text style={styles.datePickerValue}>
+                      {tripDate 
+                        ? tripDate.toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })
+                        : 'Select a date'}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color="#94a3b8" />
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={tripDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={handleDateChange}
+                    minimumDate={new Date()}
+                    textColor="#f1f5f9"
+                    themeVariant="dark"
+                  />
+                )}
+
+                {Platform.OS === 'ios' && showDatePicker && (
+                  <View style={styles.datePickerActions}>
+                    <TouchableOpacity
+                      style={styles.datePickerCancelButton}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.datePickerCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.datePickerConfirmButton, { backgroundColor: selectedCategory?.color }]}
+                      onPress={() => setShowDatePicker(false)}
+                    >
+                      <Text style={styles.datePickerConfirmText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <View style={styles.timelineInputCard}>
+                <Text style={styles.cardTitle}>Manual Time Entry</Text>
+                <Text style={styles.cardSubtitle}>
+                  Enter time until trip manually
+                </Text>
                 
                 <View style={styles.dualInputRow}>
                   <View style={styles.dualInputContainer}>
@@ -1094,11 +1241,28 @@ export default function VacationPlannerScreen({ onBack }) {
 
               <View style={styles.timelineVisualization}>
                 <MaterialCommunityIcons name="beach" size={48} color={selectedCategory?.color} />
-                <Text style={styles.timelineText}>
-                  {monthsToSave || daysToSave 
-                    ? `${monthsToSave ? Math.round(parseFloat(monthsToSave)) + ' months' : ''} ${monthsToSave && daysToSave ? '(' + Math.round(parseFloat(daysToSave)) + ' days)' : daysToSave ? Math.round(parseFloat(daysToSave)) + ' days' : ''} until your ${selectedCategory?.label.toLowerCase()}!` 
-                    : 'Set your timeline above'}
-                </Text>
+                {tripDate ? (
+                  <>
+                    <Text style={styles.timelineText}>
+                      Departing on {tripDate.toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
+                    </Text>
+                    <Text style={styles.timelineSubText}>
+                      {monthsToSave && parseFloat(monthsToSave) > 0
+                        ? `${Math.round(parseFloat(monthsToSave))} months (${Math.round(parseFloat(daysToSave))} days) until your ${selectedCategory?.label.toLowerCase()}!`
+                        : 'Your trip is today or in the past!'}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.timelineText}>
+                    {monthsToSave || daysToSave 
+                      ? `${monthsToSave ? Math.round(parseFloat(monthsToSave)) + ' months' : ''} ${monthsToSave && daysToSave ? '(' + Math.round(parseFloat(daysToSave)) + ' days)' : daysToSave ? Math.round(parseFloat(daysToSave)) + ' days' : ''} until your ${selectedCategory?.label.toLowerCase()}!` 
+                      : 'Set your timeline above'}
+                  </Text>
+                )}
               </View>
             </View>
           </ScrollView>
@@ -1697,6 +1861,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
     marginBottom: 16,
+  },
+
+  // Date Picker
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 2,
+    gap: 12,
+  },
+  datePickerButtonContent: {
+    flex: 1,
+  },
+  datePickerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  datePickerValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#f1f5f9',
+  },
+  datePickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    gap: 12,
+  },
+  datePickerCancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  datePickerCancelText: {
+    color: '#94a3b8',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  datePickerConfirmButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  datePickerConfirmText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    marginHorizontal: 16,
+    letterSpacing: 1,
+  },
+  timelineSubText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
   },
 
   // Buttons

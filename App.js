@@ -11,6 +11,11 @@ import SavedBudgetsScreen from './pages/Saved/SavedBudgetsScreen';
 import BudgetResultsScreen from './budgetresults/BudgetResultsScreen';
 import VacationResultsScreen from './budgetresults/VacationResultsScreen';
 import GoalResultsScreen from './budgetresults/GoalResultsScreen';
+import ScreenTransition from './components/ScreenTransition';
+
+// Monetization System
+import { MonetizationProvider } from './monetization/MonetizationContext';
+import PaywallModal from './monetization/PaywallModal';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('welcome');
@@ -79,31 +84,51 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      {currentScreen === 'welcome' && (
-        <WelcomeScreen onFinish={handleWelcomeFinish} />
-      )}
-      {currentScreen === 'selection' && (
-        <BudgetSelectionScreen onSelectOption={handleSelectOption} />
-      )}
-      {currentScreen === 'monthly' && (
-        <MonthlyPlannerScreen onBack={handleBackToSelection} />
-      )}
-      {currentScreen === 'vacation' && (
-        <VacationPlannerScreen onBack={handleBackToSelection} />
-      )}
-      {currentScreen === 'goal' && (
-        <GoalPlannerScreen onBack={handleBackToSelection} />
-      )}
-      {currentScreen === 'saved' && (
-        <SavedBudgetsScreen 
-          onBack={handleBackToSelection}
-          onViewBudget={handleViewSavedBudget}
-        />
-      )}
-      {currentScreen === 'viewBudget' && selectedBudget && renderSavedBudgetScreen()}
-    </View>
+    <MonetizationProvider>
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        
+        {/* Welcome Screen - No transition */}
+        {currentScreen === 'welcome' && (
+          <WelcomeScreen onFinish={handleWelcomeFinish} />
+        )}
+        
+        {/* Budget Selection Screen - Base screen */}
+        {currentScreen === 'selection' && (
+          <BudgetSelectionScreen onSelectOption={handleSelectOption} />
+        )}
+        
+        {/* Planner Screens - With slide transition */}
+        <ScreenTransition isVisible={currentScreen === 'monthly'} direction="left">
+          <MonthlyPlannerScreen onBack={handleBackToSelection} />
+        </ScreenTransition>
+        
+        <ScreenTransition isVisible={currentScreen === 'vacation'} direction="left">
+          <VacationPlannerScreen onBack={handleBackToSelection} />
+        </ScreenTransition>
+        
+        <ScreenTransition isVisible={currentScreen === 'goal'} direction="left">
+          <GoalPlannerScreen onBack={handleBackToSelection} />
+        </ScreenTransition>
+        
+        <ScreenTransition isVisible={currentScreen === 'saved'} direction="left">
+          <SavedBudgetsScreen 
+            onBack={handleBackToSelection}
+            onViewBudget={handleViewSavedBudget}
+          />
+        </ScreenTransition>
+        
+        {/* Saved Budget View - With transition */}
+        {currentScreen === 'viewBudget' && selectedBudget && (
+          <ScreenTransition isVisible={true} direction="left">
+            {renderSavedBudgetScreen()}
+          </ScreenTransition>
+        )}
+      </View>
+      
+      {/* Paywall Modal - Shows when user has no export credits */}
+      <PaywallModal />
+    </MonetizationProvider>
   );
 }
 

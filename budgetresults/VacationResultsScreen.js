@@ -48,6 +48,11 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
     monthsToSave,
   } = vacationData;
 
+  // Determine if we should use daily savings plan (less than 1 month)
+  const usesDailySavingsPlan = monthsToSave < 1 && monthsToSave > 0;
+  const daysToSave = usesDailySavingsPlan ? Math.ceil(monthsToSave * 30) : 0;
+  const dailySavings = usesDailySavingsPlan ? (amountNeeded / daysToSave) : 0;
+
   // Calculate progress and rates
   const progressPercentage = grandTotal > 0 ? (currentSaved / grandTotal) * 100 : 0;
   const budgetPerDay = duration > 0 ? totalBudget / duration : 0;
@@ -57,10 +62,30 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
   // Format currency
   const formatCurrency = (amount) => {
     if (amount === undefined || amount === null) return `${currency}0`;
-    return `${currency}${Math.abs(amount).toLocaleString('en-US', {
+    const formattedAmount = Math.abs(amount).toLocaleString('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    })}`;
+    });
+    return formattedAmount; // Return just the number, currency will be styled separately
+  };
+
+  // Format currency for compact display (e.g., 1.5K, 2.3M)
+  const formatCurrencyCompact = (amount) => {
+    if (amount === undefined || amount === null) return `0`;
+    const absAmount = Math.abs(amount);
+    
+    if (absAmount >= 1000000) {
+      return `${(absAmount / 1000000).toFixed(1)}M`;
+    } else if (absAmount >= 10000) {
+      return `${(absAmount / 1000).toFixed(1)}K`;
+    } else if (absAmount >= 1000) {
+      return `${(absAmount / 1000).toFixed(0)}K`;
+    }
+    
+    return absAmount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
   };
 
   // Get vacation category icon and color
@@ -174,9 +199,9 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               />
               <SvgText
                 x={center}
-                y={center - 18}
+                y={center - 22}
                 textAnchor="middle"
-                fontSize="11"
+                fontSize="10"
                 fill="#94a3b8"
                 fontWeight="600"
                 letterSpacing="1"
@@ -185,19 +210,29 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               </SvgText>
               <SvgText
                 x={center}
-                y={center + 5}
+                y={center - 6}
                 textAnchor="middle"
-                fontSize="22"
-                fill={getVacationColor()}
-                fontWeight="bold"
+                fontSize="11"
+                fill="#64748b"
+                fontWeight="500"
               >
-                {formatCurrency(total)}
+                {currency}
               </SvgText>
               <SvgText
                 x={center}
-                y={center + 22}
+                y={center + 12}
                 textAnchor="middle"
-                fontSize="10"
+                fontSize="20"
+                fill={getVacationColor()}
+                fontWeight="bold"
+              >
+                {formatCurrencyCompact(total)}
+              </SvgText>
+              <SvgText
+                x={center}
+                y={center + 24}
+                textAnchor="middle"
+                fontSize="9"
                 fill="#64748b"
                 fontWeight="500"
               >
@@ -217,9 +252,12 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                   </View>
                   <Text style={styles.legendLabel}>{cat.label}</Text>
                   <View style={styles.legendValueContainer}>
-                    <Text style={styles.legendValue}>
-                      {formatCurrency(cat.amount)}
-                    </Text>
+                    <View style={styles.amountWithCurrency}>
+                      <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                      <Text style={styles.legendValue}>
+                        {formatCurrency(cat.amount)}
+                      </Text>
+                    </View>
                     <Text style={[styles.legendPercentage, { color: cat.color }]}>
                       {percentage.toFixed(1)}%
                     </Text>
@@ -235,21 +273,30 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               <MaterialCommunityIcons name="sigma" size={20} color="#10b981" />
               <View style={styles.summaryTextContainer}>
                 <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(totalBudget)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.summaryValue}>{formatCurrency(totalBudget)}</Text>
+                </View>
               </View>
             </View>
             <View style={styles.summaryItem}>
               <MaterialCommunityIcons name="shield-alert" size={20} color="#f59e0b" />
               <View style={styles.summaryTextContainer}>
                 <Text style={styles.summaryLabel}>Emergency ({emergencyRate}%)</Text>
-                <Text style={styles.summaryValue}>{formatCurrency(emergencyFund)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.summaryValue}>{formatCurrency(emergencyFund)}</Text>
+                </View>
               </View>
             </View>
             <View style={[styles.summaryItem, styles.summaryItemHighlight]}>
               <MaterialCommunityIcons name="cash-check" size={22} color="#3b82f6" />
               <View style={styles.summaryTextContainer}>
                 <Text style={[styles.summaryLabel, styles.summaryLabelBold]}>Grand Total</Text>
-                <Text style={[styles.summaryValue, styles.summaryValueLarge]}>{formatCurrency(grandTotal)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={[styles.summaryValue, styles.summaryValueLarge]}>{formatCurrency(grandTotal)}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -375,7 +422,17 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                     {/* Amount displayed above bar */}
                     <SvgText
                       x={x + barWidth / 2}
-                      y={y - 10}
+                      y={y - 22}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill="#64748b"
+                      fontWeight="500"
+                    >
+                      {currency}
+                    </SvgText>
+                    <SvgText
+                      x={x + barWidth / 2}
+                      y={y - 8}
                       textAnchor="middle"
                       fontSize="13"
                       fill="#f1f5f9"
@@ -411,7 +468,17 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                     {/* Per person below percentage - amount */}
                     <SvgText
                       x={x + barWidth / 2}
-                      y={paddingTop + chartHeight + 60}
+                      y={paddingTop + chartHeight + 54}
+                      textAnchor="middle"
+                      fontSize="8"
+                      fill="#475569"
+                      fontWeight="500"
+                    >
+                      {currency}
+                    </SvgText>
+                    <SvgText
+                      x={x + barWidth / 2}
+                      y={paddingTop + chartHeight + 66}
                       textAnchor="middle"
                       fontSize="10"
                       fill="#64748b"
@@ -423,7 +490,7 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                     {/* Per person label */}
                     <SvgText
                       x={x + barWidth / 2}
-                      y={paddingTop + chartHeight + 73}
+                      y={paddingTop + chartHeight + 79}
                       textAnchor="middle"
                       fontSize="9"
                       fill="#64748b"
@@ -442,14 +509,14 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
             <View style={styles.insightItem}>
               <MaterialCommunityIcons name="crown" size={18} color="#fbbf24" />
               <Text style={styles.insightText}>
-                <Text style={styles.insightBold}>{withPerPerson[0]?.label}</Text> is your biggest expense at {formatCurrency(withPerPerson[0]?.amount)}
+                <Text style={styles.insightBold}>{withPerPerson[0]?.label}</Text> is your biggest expense at <Text style={styles.currencyTextSubtle}>{currency}</Text>{formatCurrency(withPerPerson[0]?.amount)}
               </Text>
             </View>
             {withPerPerson.length > 1 && (
               <View style={styles.insightItem}>
                 <MaterialCommunityIcons name="account-group" size={18} color="#3b82f6" />
                 <Text style={styles.insightText}>
-                  Per person: {formatCurrency(Math.min(...withPerPerson.map(c => c.perPerson)))} - {formatCurrency(Math.max(...withPerPerson.map(c => c.perPerson)))} per category
+                  Per person: <Text style={styles.currencyTextSubtle}>{currency}</Text>{formatCurrency(Math.min(...withPerPerson.map(c => c.perPerson)))} - <Text style={styles.currencyTextSubtle}>{currency}</Text>{formatCurrency(Math.max(...withPerPerson.map(c => c.perPerson)))} per category
                 </Text>
               </View>
             )}
@@ -547,20 +614,23 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
       csvLines.push('"===== SAVINGS PLAN =====",,,,');
       csvLines.push(',,,,');
       csvLines.push('"Metric","Amount","","Details",""');
-      csvLines.push(`"Total Needed","${formatCurrency(grandTotal)}","","Timeline","${monthsToSave} months"`);
+      csvLines.push(`"Total Needed","${formatCurrency(grandTotal)}","","Timeline","${usesDailySavingsPlan ? `${daysToSave} days` : `${monthsToSave} months`}"`);
       csvLines.push(`"Current Savings","${formatCurrency(currentSaved)}","","Progress","${progressPercentage.toFixed(1)}%"`);
-      csvLines.push(`"Amount Remaining","${formatCurrency(amountNeeded)}","","Monthly Savings","${formatCurrency(monthlySavings)}"`);
+      csvLines.push(`"Amount Remaining","${formatCurrency(amountNeeded)}","","${usesDailySavingsPlan ? 'Daily' : 'Monthly'} Savings","${formatCurrency(usesDailySavingsPlan ? dailySavings : monthlySavings)}"`);
       csvLines.push(',,,,');
       csvLines.push(',,,,');
       
-      // ========== MONTHLY PROJECTION TABLE ==========
-      csvLines.push('"===== MONTHLY SAVINGS PROJECTION =====",,,,');
+      // ========== MONTHLY/DAILY PROJECTION TABLE ==========
+      csvLines.push(`"===== ${usesDailySavingsPlan ? 'DAILY' : 'MONTHLY'} SAVINGS PROJECTION =====",,,`);
       csvLines.push('"(Perfect for creating charts!)",,,,');
       csvLines.push(',,,,');
-      csvLines.push('"Month","Total Saved","Remaining","Progress %","Status"');
+      csvLines.push(`"${usesDailySavingsPlan ? 'Day' : 'Month'}","Total Saved","Remaining","Progress %","Status"`);
       
-      for (let i = 0; i <= monthsToSave; i++) {
-        const totalSaved = currentSaved + (monthlySavings * i);
+      const periods = usesDailySavingsPlan ? daysToSave : monthsToSave;
+      const savingsPerPeriod = usesDailySavingsPlan ? dailySavings : monthlySavings;
+      
+      for (let i = 0; i <= periods; i++) {
+        const totalSaved = currentSaved + (savingsPerPeriod * i);
         const remaining = Math.max(0, grandTotal - totalSaved);
         const progress = (totalSaved / grandTotal) * 100;
         let status = 'Starting out';
@@ -707,7 +777,10 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
       </View>
       <View style={styles.totalBudgetCard}>
         <Text style={styles.totalLabel}>TOTAL TRIP BUDGET</Text>
-        <Text style={styles.totalAmount}>{formatCurrency(grandTotal)}</Text>
+        <View style={styles.amountWithCurrency}>
+          <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+          <Text style={styles.totalAmount}>{formatCurrency(grandTotal)}</Text>
+        </View>
         <Text style={styles.totalSubtext}>Including {emergencyRate}% emergency fund</Text>
       </View>
     </View>
@@ -726,14 +799,23 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
           <View style={styles.planItem}>
             <MaterialCommunityIcons name="clock-outline" size={28} color={getVacationColor()} />
             <Text style={styles.planItemLabel}>Timeline</Text>
-            <Text style={styles.planItemValue}>{monthsToSave} months</Text>
+            <Text style={styles.planItemValue}>
+              {usesDailySavingsPlan 
+                ? `${daysToSave} days` 
+                : `${monthsToSave} months`}
+            </Text>
           </View>
           <View style={styles.planItem}>
             <MaterialCommunityIcons name="cash-multiple" size={28} color={getVacationColor()} />
-            <Text style={styles.planItemLabel}>Monthly Savings</Text>
-            <Text style={[styles.planItemValue, styles.highlightValue]}>
-              {formatCurrency(monthlySavings)}
+            <Text style={styles.planItemLabel}>
+              {usesDailySavingsPlan ? 'Daily Savings' : 'Monthly Savings'}
             </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={[styles.planItemValue, styles.highlightValue]}>
+                {formatCurrency(usesDailySavingsPlan ? dailySavings : monthlySavings)}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -743,16 +825,31 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
             <View style={styles.timelinePoint}>
               <MaterialCommunityIcons name="flag" size={16} color="#94a3b8" />
               <Text style={styles.timelineLabel}>Start</Text>
-              <Text style={styles.timelineAmount}>{formatCurrency(currentSaved)}</Text>
+              <View style={styles.amountWithCurrency}>
+                <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                <Text style={styles.timelineAmount}>{formatCurrency(currentSaved)}</Text>
+              </View>
             </View>
             <View style={styles.timelineLine} />
             <View style={styles.timelinePoint}>
               <MaterialCommunityIcons name="flag-checkered" size={16} color={getVacationColor()} />
               <Text style={styles.timelineLabel}>Goal</Text>
-              <Text style={styles.timelineAmount}>{formatCurrency(grandTotal)}</Text>
+              <View style={styles.amountWithCurrency}>
+                <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                <Text style={styles.timelineAmount}>{formatCurrency(grandTotal)}</Text>
+              </View>
             </View>
           </View>
         </View>
+
+        {usesDailySavingsPlan && (
+          <View style={styles.dailySavingsNotice}>
+            <MaterialCommunityIcons name="information" size={20} color="#3b82f6" />
+            <Text style={styles.dailySavingsNoticeText}>
+              Your trip is less than a month away! Save <Text style={styles.currencyInline}>{currency}</Text>{formatCurrency(dailySavings)} per day to reach your goal.
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -784,7 +881,10 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                   <Text style={styles.breakdownLabel}>{cat.label}</Text>
                 </View>
                 <View style={styles.breakdownAmounts}>
-                  <Text style={styles.breakdownValue}>{formatCurrency(cat.amount)}</Text>
+                  <View style={styles.amountWithCurrency}>
+                    <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                    <Text style={styles.breakdownValue}>{formatCurrency(cat.amount)}</Text>
+                  </View>
                   <Text style={styles.breakdownPercentage}>
                     {totalBudget > 0 ? ((cat.amount / totalBudget) * 100).toFixed(0) : 0}%
                   </Text>
@@ -801,9 +901,12 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               <MaterialCommunityIcons name="sigma" size={20} color="#f1f5f9" />
               <Text style={[styles.breakdownLabel, styles.boldText]}>Subtotal</Text>
             </View>
-            <Text style={[styles.breakdownValue, styles.boldText]}>
-              {formatCurrency(totalBudget)}
-            </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={[styles.breakdownValue, styles.boldText]}>
+                {formatCurrency(totalBudget)}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.divider} />
@@ -813,7 +916,10 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               <MaterialCommunityIcons name="shield-alert" size={20} color="#f59e0b" />
               <Text style={styles.breakdownLabel}>Emergency Fund ({emergencyRate}%)</Text>
             </View>
-            <Text style={styles.breakdownValue}>{formatCurrency(emergencyFund)}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.breakdownValue}>{formatCurrency(emergencyFund)}</Text>
+            </View>
           </View>
 
           <View style={styles.totalDivider} />
@@ -825,9 +931,12 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
                 Grand Total
               </Text>
             </View>
-            <Text style={[styles.breakdownValue, styles.boldText, styles.grandTotalText]}>
-              {formatCurrency(grandTotal)}
-            </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={[styles.breakdownValue, styles.boldText, styles.grandTotalText]}>
+                {formatCurrency(grandTotal)}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -847,12 +956,18 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
           <View style={styles.perPersonItem}>
             <MaterialCommunityIcons name="account" size={32} color="#ec4899" />
             <Text style={styles.perPersonLabel}>Total Per Person</Text>
-            <Text style={styles.perPersonValue}>{formatCurrency(budgetPerPerson)}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.perPersonValue}>{formatCurrency(budgetPerPerson)}</Text>
+            </View>
           </View>
           <View style={styles.perPersonItem}>
             <MaterialCommunityIcons name="calendar-today" size={32} color="#3b82f6" />
             <Text style={styles.perPersonLabel}>Daily Budget</Text>
-            <Text style={styles.perPersonValue}>{formatCurrency(budgetPerDay)}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.perPersonValue}>{formatCurrency(budgetPerDay)}</Text>
+            </View>
           </View>
         </View>
 
@@ -860,7 +975,7 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
           <View style={styles.dailyFoodHighlight}>
             <MaterialCommunityIcons name="food-fork-drink" size={20} color="#f59e0b" />
             <Text style={styles.dailyFoodText}>
-              Daily food budget: {formatCurrency(dailyFoodPerPerson)} per person
+              Daily food budget: <Text style={styles.currencyInline}>{currency}</Text>{formatCurrency(dailyFoodPerPerson)} per person
             </Text>
           </View>
         )}
@@ -1080,12 +1195,18 @@ export default function VacationResultsScreen({ vacationData, currency = '$', on
               <View style={styles.imagePlanItem}>
                 <MaterialCommunityIcons name="clock-outline" size={24} color={getVacationColor()} />
                 <Text style={styles.imagePlanLabel}>Timeline</Text>
-                <Text style={styles.imagePlanValue}>{monthsToSave} months</Text>
+                <Text style={styles.imagePlanValue}>
+                  {usesDailySavingsPlan ? `${daysToSave} days` : `${monthsToSave} months`}
+                </Text>
               </View>
               <View style={styles.imagePlanItem}>
                 <MaterialCommunityIcons name="cash-multiple" size={24} color={getVacationColor()} />
-                <Text style={styles.imagePlanLabel}>Monthly Savings</Text>
-                <Text style={styles.imagePlanValue}>{formatCurrency(monthlySavings)}</Text>
+                <Text style={styles.imagePlanLabel}>
+                  {usesDailySavingsPlan ? 'Daily Savings' : 'Monthly Savings'}
+                </Text>
+                <Text style={styles.imagePlanValue}>
+                  {formatCurrency(usesDailySavingsPlan ? dailySavings : monthlySavings)}
+                </Text>
               </View>
             </View>
           </View>
@@ -1409,6 +1530,24 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: '#334155',
     marginHorizontal: 16,
+  },
+  dailySavingsNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    marginTop: 16,
+  },
+  dailySavingsNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#93c5fd',
+    lineHeight: 20,
+    fontWeight: '500',
   },
 
   // Budget Breakdown Section
@@ -1908,19 +2047,19 @@ const styles = StyleSheet.create({
   legendValueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   legendValue: {
     fontSize: 15,
     color: '#f1f5f9',
     fontWeight: '700',
-    minWidth: 75,
+    minWidth: 60,
     textAlign: 'right',
   },
   legendPercentage: {
     fontSize: 13,
     fontWeight: '700',
-    minWidth: 50,
+    minWidth: 45,
     textAlign: 'right',
   },
   chartSummary: {
@@ -2001,5 +2140,29 @@ const styles = StyleSheet.create({
   insightBold: {
     fontWeight: '700',
     color: '#f1f5f9',
+  },
+  
+  // Currency display styles
+  amountWithCurrency: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  currencySymbolSubtle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  currencyTextSubtle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  currencyInline: {
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.85,
   },
 });

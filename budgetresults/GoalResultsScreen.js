@@ -57,7 +57,7 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
   // Format currency
   const formatCurrency = (amount) => {
     const safeAmount = amount || 0;
-    return `${currency}${safeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return safeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
 
   // Render savings timeline graph
@@ -492,7 +492,10 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
         
         <View style={styles.targetAmountCard}>
           <Text style={styles.targetLabel}>Target Amount</Text>
-          <Text style={styles.targetAmount}>{formatCurrency(targetAmount)}</Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={styles.targetAmount}>{formatCurrency(targetAmount)}</Text>
+          </View>
         </View>
       </View>
     );
@@ -524,13 +527,19 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
         <View style={styles.progressStatsGrid}>
           <View style={styles.progressStatBox}>
             <Text style={styles.progressStatLabel}>Saved</Text>
-            <Text style={styles.progressStatValue}>{formatCurrency(currentSavings)}</Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={styles.progressStatValue}>{formatCurrency(currentSavings)}</Text>
+            </View>
           </View>
           <View style={styles.progressStatBox}>
             <Text style={styles.progressStatLabel}>Remaining</Text>
-            <Text style={[styles.progressStatValue, styles.remainingText]}>
-              {formatCurrency(amountNeeded)}
-            </Text>
+            <View style={styles.amountWithCurrency}>
+              <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+              <Text style={[styles.progressStatValue, styles.remainingText]}>
+                {formatCurrency(amountNeeded)}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -561,9 +570,12 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <MaterialCommunityIcons name="piggy-bank" size={20} color="#94a3b8" />
             <Text style={styles.planLabel}>Monthly Savings Needed</Text>
           </View>
-          <Text style={[styles.planValue, styles.highlightValue]}>
-            {formatCurrency(monthlySavingsNeeded)}
-          </Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={[styles.planValue, styles.highlightValue]}>
+              {formatCurrency(monthlySavingsNeeded)}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.divider} />
@@ -593,7 +605,10 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <View style={[styles.colorDot, { backgroundColor: '#10b981' }]} />
             <Text style={styles.breakdownLabel}>Monthly Income</Text>
           </View>
-          <Text style={styles.breakdownValue}>{formatCurrency(monthlyIncome)}</Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={styles.breakdownValue}>{formatCurrency(monthlyIncome)}</Text>
+          </View>
         </View>
 
         <View style={styles.breakdownRow}>
@@ -601,7 +616,10 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <View style={[styles.colorDot, { backgroundColor: '#f59e0b' }]} />
             <Text style={styles.breakdownLabel}>Monthly Expenses</Text>
           </View>
-          <Text style={styles.breakdownValue}>{formatCurrency(monthlyExpenses)}</Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={styles.breakdownValue}>{formatCurrency(monthlyExpenses)}</Text>
+          </View>
         </View>
 
         <View style={styles.breakdownRow}>
@@ -609,7 +627,10 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <View style={[styles.colorDot, { backgroundColor: '#3b82f6' }]} />
             <Text style={styles.breakdownLabel}>Available to Save</Text>
           </View>
-          <Text style={styles.breakdownValue}>{formatCurrency(availableToSave)}</Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={styles.breakdownValue}>{formatCurrency(availableToSave)}</Text>
+          </View>
         </View>
 
         <View style={styles.totalDivider} />
@@ -619,9 +640,12 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <View style={[styles.colorDot, { backgroundColor: '#e74c3c' }]} />
             <Text style={[styles.breakdownLabel, styles.boldText]}>Required Savings</Text>
           </View>
-          <Text style={[styles.breakdownValue, styles.boldText, styles.highlightValue]}>
-            {formatCurrency(monthlySavingsNeeded)}
-          </Text>
+          <View style={styles.amountWithCurrency}>
+            <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+            <Text style={[styles.breakdownValue, styles.boldText, styles.highlightValue]}>
+              {formatCurrency(monthlySavingsNeeded)}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -780,7 +804,10 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
           <View style={styles.imageStatsGrid}>
             <View style={styles.imageStatCard}>
               <Text style={styles.imageStatLabel}>Target Amount</Text>
-              <Text style={styles.imageStatValue}>{formatCurrency(targetAmount)}</Text>
+              <View style={styles.amountWithCurrency}>
+                <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                <Text style={styles.imageStatValue}>{formatCurrency(targetAmount)}</Text>
+              </View>
             </View>
             <View style={styles.imageStatCard}>
               <Text style={styles.imageStatLabel}>Current Progress</Text>
@@ -798,13 +825,19 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
             <View style={styles.imageProgressLabels}>
               <View>
                 <Text style={styles.imageProgressLabel}>Saved</Text>
-                <Text style={styles.imageProgressAmount}>{formatCurrency(currentSavings)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.imageProgressAmount}>{formatCurrency(currentSavings)}</Text>
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.imageProgressLabel}>Remaining</Text>
-                <Text style={[styles.imageProgressAmount, { color: '#f59e0b' }]}>
-                  {formatCurrency(amountNeeded)}
-                </Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={[styles.imageProgressAmount, { color: '#f59e0b' }]}>
+                    {formatCurrency(amountNeeded)}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -821,9 +854,12 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
               <View style={styles.imagePlanItem}>
                 <MaterialCommunityIcons name="piggy-bank" size={20} color="#94a3b8" />
                 <Text style={styles.imagePlanLabel}>Monthly Savings</Text>
-                <Text style={[styles.imagePlanValue, { color: '#e74c3c' }]}>
-                  {formatCurrency(monthlySavingsNeeded)}
-                </Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={[styles.imagePlanValue, { color: '#e74c3c' }]}>
+                    {formatCurrency(monthlySavingsNeeded)}
+                  </Text>
+                </View>
               </View>
               <View style={styles.imagePlanItem}>
                 <MaterialCommunityIcons name="percent" size={20} color="#94a3b8" />
@@ -840,17 +876,26 @@ export default function GoalResultsScreen({ goalData, currency = '$', onBack }) 
               <View style={styles.imageFinancialRow}>
                 <View style={[styles.imageColorDot, { backgroundColor: '#10b981' }]} />
                 <Text style={styles.imageFinancialLabel}>Income</Text>
-                <Text style={styles.imageFinancialValue}>{formatCurrency(monthlyIncome)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.imageFinancialValue}>{formatCurrency(monthlyIncome)}</Text>
+                </View>
               </View>
               <View style={styles.imageFinancialRow}>
                 <View style={[styles.imageColorDot, { backgroundColor: '#f59e0b' }]} />
                 <Text style={styles.imageFinancialLabel}>Expenses</Text>
-                <Text style={styles.imageFinancialValue}>{formatCurrency(monthlyExpenses)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.imageFinancialValue}>{formatCurrency(monthlyExpenses)}</Text>
+                </View>
               </View>
               <View style={styles.imageFinancialRow}>
                 <View style={[styles.imageColorDot, { backgroundColor: '#3b82f6' }]} />
                 <Text style={styles.imageFinancialLabel}>Available</Text>
-                <Text style={styles.imageFinancialValue}>{formatCurrency(availableToSave)}</Text>
+                <View style={styles.amountWithCurrency}>
+                  <Text style={styles.currencySymbolSubtle}>{currency}</Text>
+                  <Text style={styles.imageFinancialValue}>{formatCurrency(availableToSave)}</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -1569,5 +1614,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  amountWithCurrency: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  currencySymbolSubtle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '500',
+    opacity: 0.7,
   },
 });
