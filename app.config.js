@@ -3,11 +3,11 @@ export default {
   slug: 'budgetbuddy',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/logo.PNG',
+  icon: './assets/logo.png',
   userInterfaceStyle: 'light',
   newArchEnabled: true,
   splash: {
-    image: './assets/logo.PNG',
+    image: './assets/logo.png',
     resizeMode: 'contain',
     backgroundColor: '#1a1a2e',
   },
@@ -20,7 +20,7 @@ export default {
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/logo.PNG',
+      foregroundImage: './assets/logo.png',
       backgroundColor: '#1a1a2e',
     },
     package: 'com.budgetbuddy.budgetapp',
