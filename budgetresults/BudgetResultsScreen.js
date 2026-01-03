@@ -17,7 +17,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SankeyDiagram from './SankeyDiagram';
+import SankeyDiagram from '../SankeyDiagram';
 import CircleDiagrams from './CircleDiagrams';
 import { useMonetization } from '../monetization/MonetizationContext';
 
@@ -557,8 +557,8 @@ export default function BudgetResultsScreen({ budgetData, plannerType, currency 
           
           <Text style={styles.scrollHint}>
             {showCircleDiagrams 
-              ? '� View your income vs expenses distribution at a glance'
-              : '👈 Swipe left/right to explore the full diagram'}
+              ? '📊 View your income vs expenses distribution at a glance'
+              : '� Use zoom buttons to explore • Drag to navigate'}
           </Text>
         </Animated.View>
 

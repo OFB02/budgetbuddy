@@ -4,22 +4,24 @@
     "slug": "budgetbuddy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.jpg",
+    "icon": "./assets/logo.PNG",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo.jpg",
+      "image": "./assets/logo.PNG",
       "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.budgetbuddy.budgetapp"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.jpg",
+        "foregroundImage": "./assets/logo.PNG",
         "backgroundColor": "#1a1a2e"
       },
+      "package": "com.budgetbuddy.budgetapp",
       "edgeToEdgeEnabled": true
     },
     "web": {

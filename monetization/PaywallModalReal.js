@@ -38,6 +38,12 @@ export default function PaywallModalReal() {
     if (showPaywall && !adMobService.isAdReady()) {
       loadAd();
     }
+    
+    // Reset states when paywall opens
+    if (showPaywall) {
+      setAdError(null);
+      setIsLoadingAd(false);
+    }
   }, [showPaywall]);
 
   const loadAd = async () => {
@@ -56,11 +62,13 @@ export default function PaywallModalReal() {
 
   const handleWatchAd = async () => {
     setAdError(null);
+    setIsLoadingAd(true);
 
     // Check if ad is ready
     if (!adMobService.isAdReady()) {
       setAdError('Ad not ready. Loading...');
       await loadAd();
+      setIsLoadingAd(false);
       return;
     }
 
@@ -73,11 +81,22 @@ export default function PaywallModalReal() {
         if (event === 'earned') {
           console.log('🎁 User earned reward, awarding credit');
           await awardAdCredit();
+          setIsLoadingAd(false);
+          setAdError(null);
+          // Preload next ad
+          setTimeout(() => {
+            loadAd();
+          }, 1000);
+          unsubscribe();
+        } else if (event === 'closed') {
+          // Ad was closed without earning reward
+          setIsLoadingAd(false);
           unsubscribe();
         }
       });
     } else {
       setAdError(result.error || 'Failed to show ad');
+      setIsLoadingAd(false);
     }
   };
 
