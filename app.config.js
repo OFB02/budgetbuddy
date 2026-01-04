@@ -1,4 +1,5 @@
-export default {
+export default ({ config }) => ({
+  ...config,
   name: 'budgetbuddy',
   slug: 'budgetbuddy',
   version: '1.0.0',
@@ -16,6 +17,9 @@ export default {
     bundleIdentifier: 'com.budgetbuddy.budgetapp',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      SKAdNetworkItems: [
+        { SKAdNetworkIdentifier: 'cstr6suwn9.skadnetwork' },
+      ],
     },
   },
   android: {
@@ -30,6 +34,8 @@ export default {
     favicon: './assets/favicon.png',
   },
   plugins: [
+    'expo-font',
+    'react-native-reanimated/plugin',
     [
       'react-native-google-mobile-ads',
       {
@@ -68,4 +74,4 @@ export default {
       },
     },
   },
-};
+});
